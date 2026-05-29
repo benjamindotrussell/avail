@@ -1,11 +1,6 @@
-import {
-  signInWithCredential,
-  OAuthProvider,
-  GoogleAuthProvider,
-} from 'firebase/auth';
+import auth from '@react-native-firebase/auth';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { firebaseAuth } from '../lib/firebase';
 import { upsertUser } from './firestoreService';
 import { useAuthStore } from '../store/authStore';
 
@@ -24,8 +19,8 @@ export async function signInWithApple(): Promise<void> {
   const { identityToken, fullName } = result;
   if (!identityToken) throw new Error('No identity token returned from Apple');
 
-  const credential = new OAuthProvider('apple.com').credential({ idToken: identityToken });
-  const { user } = await signInWithCredential(firebaseAuth, credential);
+  const appleCredential = auth.AppleAuthProvider.credential(identityToken);
+  const { user } = await auth().signInWithCredential(appleCredential);
 
   const displayName = fullName?.givenName
     ? [fullName.givenName, fullName.familyName].filter(Boolean).join(' ')
@@ -50,8 +45,8 @@ export async function signInWithGoogle(): Promise<void> {
   const idToken = result.data?.idToken;
   if (!idToken) throw new Error('No ID token returned from Google');
 
-  const credential = GoogleAuthProvider.credential(idToken);
-  const { user } = await signInWithCredential(firebaseAuth, credential);
+  const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+  const { user } = await auth().signInWithCredential(googleCredential);
 
   const displayName = user.displayName ?? result.data?.user?.name ?? 'Avail user';
   const avatarUrl = user.photoURL ?? result.data?.user?.photo ?? null;

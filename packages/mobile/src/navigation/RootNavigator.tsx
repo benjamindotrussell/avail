@@ -2,9 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer, LinkingOptions, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Linking from 'expo-linking';
-import { onAuthStateChanged } from 'firebase/auth';
-
-import { firebaseAuth } from '../lib/firebase';
+import auth from '@react-native-firebase/auth';
 import { getUser } from '../services/firestoreService';
 import { useAuthStore } from '../store/authStore';
 import { useGroupsStore } from '../store/groupsStore';
@@ -113,7 +111,7 @@ const RootNavigator: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
+    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
         try {
           const userDTO = await getUser(firebaseUser.uid);

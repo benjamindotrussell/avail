@@ -2,11 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Switch, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { AppNavProp } from '../navigation/types';
-import { signOut } from 'firebase/auth';
+import auth from '@react-native-firebase/auth';
 import { useAuthStore } from '../store/authStore';
 import { useStatusStore } from '../store/statusStore';
 import { useGroupsStore } from '../store/groupsStore';
-import { firebaseAuth } from '../lib/firebase';
 import { colours } from '../constants/colours';
 
 const ProfileScreen: React.FC = () => {
@@ -20,7 +19,7 @@ const ProfileScreen: React.FC = () => {
     clearAuth();
     clearStatus();
     clearGroups();
-    signOut(firebaseAuth).catch(() => {});
+    auth().signOut().catch(() => {});
   };
 
   const handleDeleteAccount = () => {
@@ -36,7 +35,7 @@ const ProfileScreen: React.FC = () => {
             clearAuth();
             clearStatus();
             clearGroups();
-            firebaseAuth.currentUser?.delete().catch(() => {});
+            auth().currentUser?.delete().catch(() => {});
           },
         },
       ]

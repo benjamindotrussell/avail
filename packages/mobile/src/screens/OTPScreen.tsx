@@ -2,20 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { signInWithPhoneNumber } from 'firebase/auth';
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
+import auth from '@react-native-firebase/auth';
 import type { AuthNavProp, AuthRouteProp } from '../navigation/types';
-import { firebaseAuth, firebaseConfig } from '../lib/firebase';
 import { getUser, upsertUser } from '../services/firestoreService';
 import { getConfirmation, setConfirmation, clearConfirmation } from '../services/phoneAuth';
 import { useAuthStore } from '../store/authStore';
 import { colours } from '../constants/colours';
 
 const OTPScreen: React.FC = () => {
-  const navigation        = useNavigation<AuthNavProp<'OTP'>>();
-  const route             = useRoute<AuthRouteProp<'OTP'>>();
-  const { phone }         = route.params;
-  const resendVerifier    = useRef<any>(null);
+  const navigation = useNavigation<AuthNavProp<'OTP'>>();
+  const route      = useRoute<AuthRouteProp<'OTP'>>();
+  const { phone }  = route.params;
 
   const [digits, setDigits]     = useState(['', '', '', '', '', '']);
   const [loading, setLoading]   = useState(false);
@@ -74,18 +71,13 @@ const OTPScreen: React.FC = () => {
   const handleResend = async () => {
     setResendIn(60);
     try {
-      const confirmation = await signInWithPhoneNumber(firebaseAuth, phone, resendVerifier.current);
+      const confirmation = await auth().signInWithPhoneNumber(phone);
       setConfirmation(confirmation);
     } catch {}
   };
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom + 16 }]}>
-      <FirebaseRecaptchaVerifierModal
-        ref={resendVerifier}
-        firebaseConfig={firebaseConfig}
-        attemptInvisibleVerification
-      />
       <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
         <Text style={styles.backText}>← {phone}</Text>
       </TouchableOpacity>

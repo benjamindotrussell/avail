@@ -1,17 +1,14 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { signInWithPhoneNumber } from 'firebase/auth';
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
+import auth from '@react-native-firebase/auth';
 import type { AuthNavProp } from '../navigation/types';
-import { firebaseAuth, firebaseConfig } from '../lib/firebase';
 import { setConfirmation } from '../services/phoneAuth';
 import { colours } from '../constants/colours';
 
 const PhoneScreen: React.FC = () => {
   const navigation = useNavigation<AuthNavProp<'Phone'>>();
-  const recaptchaVerifier = useRef<any>(null);
   const [phone, setPhone]     = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
@@ -25,7 +22,7 @@ const PhoneScreen: React.FC = () => {
     setError(null);
     try {
       const normalizedPhone = phone.replace(/\s/g, '');
-      const confirmation = await signInWithPhoneNumber(firebaseAuth, normalizedPhone, recaptchaVerifier.current);
+      const confirmation = await auth().signInWithPhoneNumber(normalizedPhone);
       setConfirmation(confirmation);
       navigation.navigate('OTP', { phone: normalizedPhone });
     } catch (err: any) {
@@ -41,11 +38,6 @@ const PhoneScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom + 16 }]}>
-      <FirebaseRecaptchaVerifierModal
-        ref={recaptchaVerifier}
-        firebaseConfig={firebaseConfig}
-        attemptInvisibleVerification
-      />
       <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
         <Text style={styles.backText}>← Back</Text>
       </TouchableOpacity>

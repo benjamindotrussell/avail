@@ -3,8 +3,8 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
 import type { AuthRouteProp } from '../navigation/types';
+import auth from '@react-native-firebase/auth';
 import { useAuthStore } from '../store/authStore';
-import { firebaseAuth } from '../lib/firebase';
 import { upsertUser } from '../services/firestoreService';
 import { colours } from '../constants/colours';
 
@@ -20,7 +20,7 @@ const DisplayNameScreen: React.FC = () => {
     if (!name.trim()) return;
     setLoading(true);
     try {
-      const uid = firebaseAuth.currentUser?.uid;
+      const uid = auth().currentUser?.uid;
       if (!uid) return;
       await upsertUser(uid, { displayName: name.trim(), phone });
       setUser({

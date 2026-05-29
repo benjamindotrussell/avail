@@ -9,3 +9,7 @@ coverage/
 .idea/
 .vscode/
 *.tsbuildinfo
+
+# Firebase native config files (contain API keys)
+packages/mobile/google-services.json
+packages/mobile/GoogleService-Info.plist
