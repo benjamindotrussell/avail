@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Avail",
+    "slug": "avail",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "avail",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#1C1A2E"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.avail.mobile",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Avail uses your photo library to set a profile picture.",
+        "NSCameraUsageDescription": "Avail uses your camera to take a profile picture."
+      },
+      "googleServicesFile": "./GoogleService-Info.plist"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1C1A2E"
+      },
+      "package": "app.avail.mobile",
+      "googleServicesFile": "./google-services.json"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#FF6B35",
+          "sounds": []
+        }
+      ],
+      "expo-secure-store",
+      "expo-apple-authentication"
+    ],
+    "newArchEnabled": false,
+    "extra": {
+      "eas": {
+        "projectId": "939072ef-de06-46eb-875b-f4da55a6c8a4"
+      }
+    },
+    "owner": "russelb"
+  }
+}

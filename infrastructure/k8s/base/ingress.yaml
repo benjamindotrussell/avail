@@ -1,0 +1,86 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: avail-ingress
+  namespace: avail-staging  # change per environment
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/certificate-arn: PLACEHOLDER_CERT_ARN
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443},{"HTTP":80}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '30'
+    # WebSocket support
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    # Sticky sessions for WebSocket service
+    alb.ingress.kubernetes.io/target-group-attributes: >-
+      stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=86400
+spec:
+  rules:
+    - host: api.avail.app  # staging: api-staging.avail.app
+      http:
+        paths:
+          # Invite web fallback (groups-service handles this)
+          - path: /join
+            pathType: Prefix
+            backend:
+              service:
+                name: avail-groups-service
+                port:
+                  number: 80
+
+          # Auth service
+          - path: /v1/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: avail-auth-service
+                port:
+                  number: 80
+
+          # User profile (served by auth-service)
+          - path: /v1/users
+            pathType: Prefix
+            backend:
+              service:
+                name: avail-auth-service
+                port:
+                  number: 80
+
+          # Groups service
+          - path: /v1/groups
+            pathType: Prefix
+            backend:
+              service:
+                name: avail-groups-service
+                port:
+                  number: 80
+
+          # Status service
+          - path: /v1/status
+            pathType: Prefix
+            backend:
+              service:
+                name: avail-status-service
+                port:
+                  number: 80
+
+          # Notification service
+          - path: /v1/notifications
+            pathType: Prefix
+            backend:
+              service:
+                name: avail-notification-service
+                port:
+                  number: 80
+
+          # WebSocket service — must come before generic /socket.io
+          - path: /socket.io
+            pathType: Prefix
+            backend:
+              service:
+                name: avail-websocket-service
+                port:
+                  number: 80

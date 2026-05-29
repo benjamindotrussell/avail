@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npx tsc *)",
+      "Bash(cmd.exe *)",
+      "Bash(powershell.exe *)",
+      "Bash(npm *)",
+      "mcp__claude_ai_ClickUp__clickup_search",
+      "mcp__claude_ai_ClickUp__clickup_get_task",
+      "mcp__claude_ai_ClickUp__clickup_get_task_comments",
+      "Bash(npx prisma *)",
+      "Bash(xargs sed *)",
+      "Bash(npx jest *)",
+      "Bash(openssl genrsa *)",
+      "Bash(openssl rsa *)",
+      "Bash(openssl version *)",
+      "Bash(docker-compose up *)",
+      "Bash(docker-compose down *)",
+      "Bash(node *)",
+      "mcp__claude_ai_ClickUp__clickup_get_workspace_hierarchy",
+      "mcp__claude_ai_ClickUp__clickup_filter_tasks",
+      "mcp__claude_ai_ClickUp__clickup_update_task",
+      "mcp__claude_ai_ClickUp__clickup_create_task_comment",
+      "Bash(netstat -ano)",
+      "Bash(tasklist *)",
+      "PowerShell(Stop-Process *)",
+      "Bash(npx expo *)",
+      "PowerShell(cd c:\\\\repo\\\\avail\\\\packages\\\\shared; $env:DATABASE_URL=\"postgresql://avail:avail_local@localhost:5433/avail\"; $env:DIRECT_URL=\"postgresql://avail:avail_local@localhost:5433/avail\"; npx prisma db push --schema prisma/schema.prisma 2>&1)",
+      "PowerShell([System.Environment]::GetEnvironmentVariable\\(\"ANDROID_HOME\", \"User\"\\))",
+      "PowerShell($env:DATABASE_URL='postgresql://avail:avail@localhost:5433/avail'; $env:DIRECT_URL='postgresql://avail:avail@localhost:5433/avail'; npx prisma db push --schema=packages/shared/prisma/schema.prisma 2>&1)",
+      "Bash(docker exec *)",
+      "PowerShell($env:DATABASE_URL='postgresql://avail:avail_local@localhost:5433/avail'; $env:DIRECT_URL='postgresql://avail:avail_local@localhost:5433/avail'; npx prisma db push --schema=packages/shared/prisma/schema.prisma 2>&1)"
+    ]
+  }
+}

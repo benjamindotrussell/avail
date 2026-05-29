@@ -1,0 +1,150 @@
+// Avail — Prisma Schema
+// Database: PostgreSQL 16
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // bypasses PgBouncer for migrations
+}
+
+// ─── Users ───────────────────────────────────────────────────────────────────
+
+model User {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  phone       String?  @unique @db.VarChar(20)
+  appleId     String?  @unique @map("apple_id") @db.VarChar(255)
+  googleId    String?  @unique @map("google_id") @db.VarChar(255)
+  displayName String   @map("display_name") @db.VarChar(50)
+  avatarUrl             String?  @map("avatar_url") @db.VarChar(500)
+  notifyOnlyWhenActive  Boolean  @default(false) @map("notify_only_when_active")
+  deletedAt             DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  groupsCreated   Group[]         @relation("GroupCreator")
+  memberships     GroupMember[]
+  invitesCreated  InviteLink[]    @relation("InviteCreator")
+  statuses        Status[]
+  deviceTokens    DeviceToken[]
+  refreshTokens   RefreshToken[]
+
+  @@map("users")
+}
+
+// ─── Groups ──────────────────────────────────────────────────────────────────
+
+model Group {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @db.VarChar(50)
+  avatarUrl String?  @map("avatar_url") @db.VarChar(500)
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  creator     User?         @relation("GroupCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  members     GroupMember[]
+  inviteLinks InviteLink[]
+  statuses    Status[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupId  String   @map("group_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  role     String   @default("member") @db.VarChar(10) // 'admin' | 'member'
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz
+
+  // Relations
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@index([groupId])
+  @@map("group_members")
+}
+
+// ─── Invite links ─────────────────────────────────────────────────────────────
+
+model InviteLink {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupId   String   @map("group_id") @db.Uuid
+  code      String   @unique @db.VarChar(20)
+  createdBy String?  @map("created_by") @db.Uuid
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  creator User? @relation("InviteCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([code])
+  @@index([expiresAt])
+  @@map("invite_links")
+}
+
+// ─── Statuses ─────────────────────────────────────────────────────────────────
+
+model Status {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  groupId      String    @map("group_id") @db.Uuid
+  availability String    @db.VarChar(10) // 'free' | 'maybe' | 'busy'
+  location     String?   @db.VarChar(20) // 'my_place' | 'pub' | 'out' | 'someones_place' | 'other'
+  locationNote String?   @map("location_note") @db.VarChar(100)
+  vibe         String?   @db.VarChar(20) // 'im_paying' | 'buying_own' | 'suggest' | 'free_cheap' | 'other'
+  vibeNote     String?   @map("vibe_note") @db.VarChar(100)
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([userId, groupId, createdAt(sort: Desc)])
+  @@map("statuses")
+}
+
+// ─── Device tokens ────────────────────────────────────────────────────────────
+
+model DeviceToken {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @db.VarChar(500)
+  platform  String   @db.VarChar(10) // 'ios' | 'android'
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, token])
+  @@index([userId])
+  @@map("device_tokens")
+}
+
+// ─── Refresh tokens ───────────────────────────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}

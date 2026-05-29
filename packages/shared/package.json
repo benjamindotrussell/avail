@@ -1,0 +1,26 @@
+{
+  "name": "@avail/shared",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "prisma": "prisma",
+    "prisma migrate dev": "prisma migrate dev --schema prisma/schema.prisma",
+    "prisma migrate deploy": "prisma migrate deploy --schema prisma/schema.prisma",
+    "prisma db seed": "ts-node prisma/seed.ts",
+    "prisma generate": "prisma generate --schema prisma/schema.prisma"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.8.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.8.0",
+    "ts-node": "^10.9.2"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  }
+}

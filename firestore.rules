@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Users ───────────────────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null && request.auth.uid == uid;
+
+      // Device tokens — only the owning user
+      match /deviceTokens/{token} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    // ─── Groups ──────────────────────────────────────────────────────────────
+    match /groups/{groupId} {
+      // Any authenticated member can read the group doc
+      allow read: if request.auth != null && isMember(groupId);
+
+      // Only authenticated users can create (they become admin via the batch write)
+      allow create: if request.auth != null;
+
+      // Only admins can update or delete the group doc
+      allow update, delete: if request.auth != null && isAdmin(groupId);
+
+      // ─── Members subcollection ──────────────────────────────────────────
+      match /members/{uid} {
+        // Members can read the full member list
+        allow read: if request.auth != null && isMember(groupId);
+
+        // Only the user themselves or an admin can write their member doc
+        allow write: if request.auth != null &&
+          (request.auth.uid == uid || isAdmin(groupId));
+      }
+
+      // ─── Statuses subcollection ─────────────────────────────────────────
+      match /statuses/{uid} {
+        // Members can read all statuses in the group
+        allow read: if request.auth != null && isMember(groupId);
+
+        // Users can only write their own status
+        allow write: if request.auth != null && request.auth.uid == uid
+          && isMember(groupId);
+      }
+    }
+
+    // ─── Invite codes ─────────────────────────────────────────────────────
+    match /inviteCodes/{code} {
+      // Any authenticated user can read an invite code (to join)
+      allow read: if request.auth != null;
+
+      // Only members of the referenced group can create invite codes
+      allow create: if request.auth != null
+        && isMember(request.resource.data.groupId);
+
+      // No updates or deletes via client (codes expire by TTL)
+      allow update, delete: if false;
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────
+    function isMember(groupId) {
+      return exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
+    function isAdmin(groupId) {
+      return isMember(groupId) &&
+        get(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}

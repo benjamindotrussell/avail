@@ -1,0 +1,954 @@
+openapi: 3.1.0
+info:
+  title: Avail API
+  description: |
+    Backend API for Avail — a real-time social availability app.
+
+    ## Authentication
+    All endpoints except `/v1/auth/*` require a valid JWT access token in the `Authorization` header:
+    ```
+    Authorization: Bearer <accessToken>
+    ```
+    Access tokens expire after 15 minutes. Use `POST /v1/auth/refresh` to obtain a new one.
+
+    ## Errors
+    All errors follow a consistent format:
+    ```json
+    {
+      "error": {
+        "code": "ERROR_CODE",
+        "message": "Human readable description",
+        "fields": {}
+      }
+    }
+    ```
+  version: 1.0.0
+  contact:
+    email: 12benr34@gmail.com
+
+servers:
+  - url: https://api.avail.app/v1
+    description: Production
+  - url: https://api-staging.avail.app/v1
+    description: Staging
+  - url: http://localhost:3001/v1
+    description: Auth service (local)
+  - url: http://localhost:3002/v1
+    description: Groups service (local)
+  - url: http://localhost:3003/v1
+    description: Status service (local)
+  - url: http://localhost:3004/v1
+    description: Notifications service (local)
+
+tags:
+  - name: Auth
+    description: Authentication — OTP, social sign-in, token management, account deletion
+  - name: Groups
+    description: Groups — create, manage, invite, and leave groups
+  - name: Members
+    description: Group membership management
+  - name: Status
+    description: Availability status — set, get, and clear
+  - name: Notifications
+    description: Device token registration for push notifications
+
+# ─── Components ───────────────────────────────────────────────────────────────
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum: [VALIDATION_ERROR, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, RATE_LIMITED, INTERNAL_ERROR]
+            message:
+              type: string
+            fields:
+              type: object
+          required: [code, message]
+
+    TokenPair:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+          description: Access token lifetime in seconds (900)
+      required: [accessToken, refreshToken, expiresIn]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        phone:
+          type: string
+          description: E.164 format
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    Group:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        adminId:
+          type: string
+          format: uuid
+        memberCount:
+          type: integer
+        freeCount:
+          type: integer
+          description: Number of members currently free
+        maybeCount:
+          type: integer
+          description: Number of members currently maybe
+        createdAt:
+          type: string
+          format: date-time
+
+    GroupMember:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        isAdmin:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/Status'
+          nullable: true
+
+    Status:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        availability:
+          type: string
+          enum: [free, maybe, busy]
+        location:
+          type: string
+          enum: [my_place, pub, out, someones_place]
+          nullable: true
+          description: Only valid when availability is 'free'
+        vibe:
+          type: string
+          enum: [im_paying, buying_own, suggest]
+          nullable: true
+          description: Only valid when availability is 'free'
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+# ─── Paths ────────────────────────────────────────────────────────────────────
+paths:
+
+  # ── Auth ────────────────────────────────────────────────────────────────────
+
+  /auth/otp/request:
+    post:
+      tags: [Auth]
+      summary: Request OTP
+      description: Sends a 6-digit OTP via SMS to the given phone number. Rate limited to 3 requests per phone per 10 minutes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+                  description: E.164 format (e.g. +447911123456)
+                  example: "+447911123456"
+              required: [phone]
+      responses:
+        '200':
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: OTP sent
+        '400':
+          description: Invalid phone number
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/otp/verify:
+    post:
+      tags: [Auth]
+      summary: Verify OTP and sign in
+      description: Verifies the OTP and returns a JWT pair. Creates a new user if the phone number is not registered. Max 5 attempts before the OTP is invalidated.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+                  example: "+447911123456"
+                code:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+                  example: "123456"
+              required: [phone, code]
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tokens:
+                    $ref: '#/components/schemas/TokenPair'
+                  user:
+                    $ref: '#/components/schemas/User'
+                  isNewUser:
+                    type: boolean
+        '400':
+          description: Invalid or expired OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/social:
+    post:
+      tags: [Auth]
+      summary: Social sign-in (Apple / Google)
+      description: Validates a Firebase ID token from Apple or Google sign-in and returns a JWT pair.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider:
+                  type: string
+                  enum: [apple, google]
+                idToken:
+                  type: string
+                  description: Firebase ID token from the mobile client
+              required: [provider, idToken]
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tokens:
+                    $ref: '#/components/schemas/TokenPair'
+                  user:
+                    $ref: '#/components/schemas/User'
+                  isNewUser:
+                    type: boolean
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      description: Exchanges a valid refresh token for a new JWT pair (token rotation).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+              required: [refreshToken]
+      responses:
+        '200':
+          description: New token pair issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tokens:
+                    $ref: '#/components/schemas/TokenPair'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      description: Invalidates the current refresh token.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+              required: [refreshToken]
+      responses:
+        '204':
+          description: Logged out
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/account:
+    delete:
+      tags: [Auth]
+      summary: Delete account
+      description: Soft-deletes the authenticated user's account and invalidates all refresh tokens. Required by App Store guidelines.
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Account deleted
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found or already deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── Groups ──────────────────────────────────────────────────────────────────
+
+  /groups:
+    post:
+      tags: [Groups]
+      summary: Create group
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 50
+                  example: "The Usual Suspects"
+              required: [name]
+      responses:
+        '201':
+          description: Group created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group:
+                    $ref: '#/components/schemas/Group'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags: [Groups]
+      summary: List my groups
+      description: Returns all groups the authenticated user belongs to, including current member statuses.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Groups list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groups:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Group'
+
+  /groups/{groupId}:
+    get:
+      tags: [Groups]
+      summary: Get group
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Group details with member statuses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group:
+                    allOf:
+                      - $ref: '#/components/schemas/Group'
+                      - type: object
+                        properties:
+                          members:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/GroupMember'
+        '403':
+          description: Not a member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Group not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    patch:
+      tags: [Groups]
+      summary: Update group
+      description: Admin only. Update group name.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 50
+      responses:
+        '200':
+          description: Group updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group:
+                    $ref: '#/components/schemas/Group'
+        '403':
+          description: Not the group admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags: [Groups]
+      summary: Delete group
+      description: Admin only. Permanently deletes the group and all memberships.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Group deleted
+        '403':
+          description: Not the group admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /groups/{groupId}/invite:
+    post:
+      tags: [Groups]
+      summary: Generate invite link
+      description: Admin only. Generates an 8-character invite code valid for 7 days. The deep link is `avail://join/{code}` and the web fallback is `https://api.avail.app/join/{code}`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Invite link created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "aB3xY7qR"
+                  url:
+                    type: string
+                    example: "https://api.avail.app/join/aB3xY7qR"
+                  expiresAt:
+                    type: string
+                    format: date-time
+        '403':
+          description: Not the group admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /groups/join/{code}:
+    post:
+      tags: [Groups]
+      summary: Join group via invite code
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 8
+      responses:
+        '200':
+          description: Joined group
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  group:
+                    $ref: '#/components/schemas/Group'
+        '404':
+          description: Invite code not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Already a member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── Members ─────────────────────────────────────────────────────────────────
+
+  /groups/{groupId}/members:
+    get:
+      tags: [Members]
+      summary: List group members
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Member list with current statuses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GroupMember'
+        '403':
+          description: Not a member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /groups/{groupId}/members/{userId}:
+    delete:
+      tags: [Members]
+      summary: Remove member or leave group
+      description: |
+        If `userId` matches the authenticated user, this is a "leave group" action.
+        If `userId` is another user, the caller must be the group admin.
+        If the last member leaves, the group is permanently deleted.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Member removed or left group
+        '403':
+          description: Not admin (when removing another user)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Member not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── Status ──────────────────────────────────────────────────────────────────
+
+  /status:
+    put:
+      tags: [Status]
+      summary: Set status
+      description: |
+        Sets the authenticated user's availability status. Writes to PostgreSQL and caches in Redis (TTL = expiresAt).
+
+        **Push notifications:**
+        - `free` or `maybe` → publishes to `notifications:push` channel → FCM/APNs push sent to all group members
+        - `busy` → silent update (no push)
+
+        **Location and vibe** are only valid when `availability` is `free`. Pass `null` or omit them for `maybe`/`busy`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                availability:
+                  type: string
+                  enum: [free, maybe, busy]
+                location:
+                  type: string
+                  enum: [my_place, pub, out, someones_place]
+                  nullable: true
+                vibe:
+                  type: string
+                  enum: [im_paying, buying_own, suggest]
+                  nullable: true
+                expiresAt:
+                  type: string
+                  format: date-time
+                  description: Defaults to 8 hours from now
+              required: [availability]
+            examples:
+              free_with_details:
+                summary: Free at the pub
+                value:
+                  availability: free
+                  location: pub
+                  vibe: im_paying
+              maybe:
+                summary: Maybe free
+                value:
+                  availability: maybe
+              busy:
+                summary: Busy
+                value:
+                  availability: busy
+      responses:
+        '200':
+          description: Status set
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/Status'
+        '400':
+          description: Validation error (e.g. location set with non-free availability)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags: [Status]
+      summary: Clear status
+      description: Removes the user's current status from Redis and soft-deletes it in PostgreSQL. Publishes a null status update to all group channels.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Status cleared (returns 200 even if no active status existed)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Status cleared
+
+  /status/me:
+    get:
+      tags: [Status]
+      summary: Get my current status
+      description: Returns the authenticated user's current status. Checks Redis cache first, falls back to PostgreSQL.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current status (null if no active status)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/Status'
+                    nullable: true
+
+  /status/group/{groupId}:
+    get:
+      tags: [Status]
+      summary: Get group member statuses
+      description: Returns the current status of all members in a group. Uses Redis mGet for a single batch lookup. Caller must be a group member.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Member statuses (null for members with no active status)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statuses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        userId:
+                          type: string
+                          format: uuid
+                        status:
+                          $ref: '#/components/schemas/Status'
+                          nullable: true
+        '403':
+          description: Not a group member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── Notifications ────────────────────────────────────────────────────────────
+
+  /notifications/device-tokens:
+    post:
+      tags: [Notifications]
+      summary: Register device token
+      description: Registers an FCM (Android) or APNs (iOS) device token for the authenticated user. Uses upsert — re-registering the same token is safe.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  description: FCM registration token (Android) or APNs device token (iOS)
+                platform:
+                  type: string
+                  enum: [ios, android]
+              required: [token, platform]
+      responses:
+        '200':
+          description: Token registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Device token registered
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /notifications/device-tokens/{token}:
+    delete:
+      tags: [Notifications]
+      summary: Remove device token
+      description: Removes a device token (e.g. on logout or when the app receives an unregistered token error from FCM/APNs).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Token removed
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── WebSocket ────────────────────────────────────────────────────────────────
+
+  /socket.io:
+    get:
+      tags: [Auth]
+      summary: WebSocket connection (Socket.io)
+      description: |
+        Establishes a Socket.io WebSocket connection for real-time status updates.
+
+        **Connection:** `wss://api.avail.app/socket.io?token=<accessToken>`
+
+        **Auth:** Pass the JWT access token as a query parameter on connection. The server validates it and rejects with a 401 error event if invalid.
+
+        **Rooms:** On connect, the server automatically joins the client to a room for each of their groups (`group:<groupId>`).
+
+        **Events received by client:**
+        - `connected` — emitted on successful auth, payload: `{ userId, statuses: { [userId]: Status | null } }`
+        - `status:update` — emitted when any group member sets or clears their status, payload: `{ userId, groupId, status: Status | null }`
+
+        **No events sent by client** — status changes go via REST (`PUT /v1/status`), not WebSocket.
+      responses:
+        '101':
+          description: Switching protocols (WebSocket upgrade)
+        '401':
+          description: Invalid or missing token
