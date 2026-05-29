@@ -3,8 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "packages/mobile",
-    "packages/functions",
     "packages/shared"
   ],
   "scripts": {

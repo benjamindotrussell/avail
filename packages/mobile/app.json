@@ -43,9 +43,12 @@
       [
         "expo-build-properties",
         {
-          "ios": { "useFrameworks": "static" }
+          "ios": {
+            "useFrameworks": "static"
+          }
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "newArchEnabled": false,
     "extra": {
