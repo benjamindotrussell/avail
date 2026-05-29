@@ -4,11 +4,18 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "base": {
+      "env": {
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "1"
+      }
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal"
     },
     "simulator": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
@@ -16,9 +23,11 @@
       }
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal"
     },
     "production": {
+      "extends": "base",
       "autoIncrement": true
     }
   },
