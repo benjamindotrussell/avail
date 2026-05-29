@@ -10,6 +10,5 @@ coverage/
 .vscode/
 *.tsbuildinfo
 
-# Firebase native config files (contain API keys)
-packages/mobile/google-services.json
+# GoogleService-Info.plist contains sensitive iOS keys — manage via EAS secrets for iOS builds
 packages/mobile/GoogleService-Info.plist
