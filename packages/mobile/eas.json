@@ -16,10 +16,12 @@
       }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "prebuildCommand": "if [ \"$EAS_BUILD_PLATFORM\" = \"ios\" ]; then echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > GoogleService-Info.plist; fi && npx expo prebuild --clean"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "prebuildCommand": "if [ \"$EAS_BUILD_PLATFORM\" = \"ios\" ]; then echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > GoogleService-Info.plist; fi && npx expo prebuild --clean"
     }
   },
   "submit": {
