@@ -9,7 +9,8 @@
     "ios": "expo run:ios",
     "test": "jest --passWithNoTests",
     "lint": "eslint src --ext .ts,.tsx",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "postinstall": "if [ -n \"$GOOGLE_SERVICE_INFO_PLIST\" ]; then echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > GoogleService-Info.plist; fi"
   },
   "dependencies": {
     "@avail/shared": "file:../shared",
