@@ -10,7 +10,7 @@
     "test": "jest --passWithNoTests",
     "lint": "eslint src --ext .ts,.tsx",
     "type-check": "tsc --noEmit",
-    "postinstall": "if [ -n \"$GOOGLE_SERVICE_INFO_PLIST\" ]; then echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > GoogleService-Info.plist; fi"
+    "postinstall": "node -e \"const v = process.env.GOOGLE_SERVICE_INFO_PLIST; if (v) require('fs').writeFileSync('GoogleService-Info.plist', Buffer.from(v, 'base64'));\""
   },
   "dependencies": {
     "@avail/shared": "file:../shared",
@@ -33,6 +33,7 @@
     "expo-dev-client": "~56.0.18",
     "expo-device": "~56.0.4",
     "expo-linking": "~56.0.13",
+    "expo-localization": "~56.0.6",
     "expo-notifications": "~56.0.15",
     "expo-secure-store": "~56.0.4",
     "expo-status-bar": "~56.0.4",

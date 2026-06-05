@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import auth from '@react-native-firebase/auth';
 import type { AuthNavProp } from '../navigation/types';
 import { setConfirmation } from '../services/phoneAuth';
+import { getDeviceDialCode, normalizePhone } from '../utils/phoneUtils';
 import { colours } from '../constants/colours';
 
 const PhoneScreen: React.FC = () => {
@@ -14,14 +15,15 @@ const PhoneScreen: React.FC = () => {
   const [error, setError]     = useState<string | null>(null);
   const insets = useSafeAreaInsets();
 
-  const isValid = phone.replace(/\D/g, '').length >= 10;
+  const dialCode = getDeviceDialCode();
+  const isValid = phone.replace(/\D/g, '').length >= 6;
 
   const handleSend = async () => {
     if (!isValid) return;
     setLoading(true);
     setError(null);
     try {
-      const normalizedPhone = phone.replace(/\s/g, '');
+      const normalizedPhone = normalizePhone(phone, dialCode);
       const confirmation = await auth().signInWithPhoneNumber(normalizedPhone);
       setConfirmation(confirmation);
       navigation.navigate('OTP', { phone: normalizedPhone });
@@ -47,7 +49,7 @@ const PhoneScreen: React.FC = () => {
         style={styles.input}
         value={phone}
         onChangeText={setPhone}
-        placeholder="+44 7700 000000"
+        placeholder="07700 000000"
         placeholderTextColor={colours.stone}
         keyboardType="phone-pad"
         autoFocus
