@@ -126,20 +126,22 @@ export async function upsertUser(uid: string, data: {
   notifyOnlyWhenActive?: boolean;
 }): Promise<void> {
   const ref = firestore().collection('users').doc(uid);
-  const snap = await ref.get();
-  if (snap.exists) {
-    await ref.update(data);
-  } else {
-    await ref.set({
-      displayName: data.displayName ?? '',
-      avatarUrl: data.avatarUrl ?? null,
-      phone: data.phone ?? null,
-      notifyOnlyWhenActive: false,
-      memberGroupIds: [],
-      createdAt: firestore.FieldValue.serverTimestamp(),
-      ...data,
-    });
-  }
+  await firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (snap.exists) {
+      tx.update(ref, data);
+    } else {
+      tx.set(ref, {
+        displayName: data.displayName ?? '',
+        avatarUrl: data.avatarUrl ?? null,
+        phone: data.phone ?? null,
+        notifyOnlyWhenActive: false,
+        memberGroupIds: [],
+        createdAt: firestore.FieldValue.serverTimestamp(),
+        ...data,
+      });
+    }
+  });
 }
 
 export async function updateUser(uid: string, data: {
