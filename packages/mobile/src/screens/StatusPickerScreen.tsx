@@ -48,7 +48,7 @@ const LOCATION_OPTS: Option[] = [
 ];
 
 const VIBE_OPTS: Option[] = [
-  { value: 'im_paying',  label: "I'm paying",            sub: 'Covering drinks tonight',       dotColour: colours.yellow },
+  { value: 'im_paying',  label: "I'm paying",            sub: "It's on me this time",          dotColour: colours.yellow },
   { value: 'buying_own', label: 'Buying my own',         sub: 'Trying to stay in budget',      dotColour: colours.coral  },
   { value: 'free_cheap', label: 'Something free/cheap',  sub: "I'm broke but want to hang out", dotColour: colours.stone  },
   { value: 'suggest',    label: 'Suggest something',     sub: 'No preference',                 dotColour: colours.stone  },
