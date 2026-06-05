@@ -66,7 +66,7 @@ const ProfileScreen: React.FC = () => {
         </View>
         <View style={styles.row}>
           <Text style={styles.rowLabel}>Status expires</Text>
-          <Text style={styles.rowValue}>8 hours</Text>
+          <Text style={styles.rowValue}>{user?.defaultExpiryHours === 1 ? '1 hour' : `${user?.defaultExpiryHours ?? 8} hours`}</Text>
         </View>
         <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('EditProfile')}>
           <Text style={[styles.rowLabel, { color: colours.orange }]}>Edit profile</Text>
