@@ -128,19 +128,32 @@ export async function upsertUser(uid: string, data: {
   notifyOnlyWhenActive?: boolean;
 }): Promise<void> {
   const ref = firestore().collection('users').doc(uid);
+
+  const fullDoc = {
+    displayName: data.displayName ?? '',
+    avatarUrl: data.avatarUrl ?? null,
+    phone: data.phone ?? null,
+    notifyOnlyWhenActive: false,
+    memberGroupIds: [],
+    createdAt: new Date(),
+    ...data,
+  };
+
   const snap = await ref.get();
-  if (snap.exists) {
+  if (!snap.exists) {
+    await ref.set(fullDoc);
+    return;
+  }
+
+  try {
     await ref.update(data);
-  } else {
-    await ref.set({
-      displayName: data.displayName ?? '',
-      avatarUrl: data.avatarUrl ?? null,
-      phone: data.phone ?? null,
-      notifyOnlyWhenActive: false,
-      memberGroupIds: [],
-      createdAt: new Date(),
-      ...data,
-    });
+  } catch (e: any) {
+    // Offline cache reported exists=true but server disagrees — create the doc.
+    if (e?.code === 'firestore/not-found') {
+      await ref.set(fullDoc);
+    } else {
+      throw e;
+    }
   }
 }
 
