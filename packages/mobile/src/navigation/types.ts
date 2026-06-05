@@ -4,9 +4,6 @@ import type { RouteProp } from '@react-navigation/native';
 // ─── Auth stack ───────────────────────────────────────────────────────────────
 export type AuthStackParamList = {
   Onboarding: undefined;
-  Phone: undefined;
-  OTP: { phone: string };
-  DisplayName: { isNewUser: boolean; phone?: string };
 };
 
 // ─── App stack ────────────────────────────────────────────────────────────────

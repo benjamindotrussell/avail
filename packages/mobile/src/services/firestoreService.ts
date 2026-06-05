@@ -13,7 +13,6 @@ interface FSUser {
   avatarUrl: string | null;
   notifyOnlyWhenActive: boolean;
   defaultExpiryHours?: number;
-  phone: string | null;
   memberGroupIds: string[];
   createdAt: Timestamp;
 }
@@ -124,7 +123,6 @@ export async function getUser(uid: string): Promise<UserDTO | null> {
 export async function upsertUser(uid: string, data: {
   displayName?: string;
   avatarUrl?: string | null;
-  phone?: string | null;
   notifyOnlyWhenActive?: boolean;
 }): Promise<void> {
   const ref = firestore().collection('users').doc(uid);
@@ -132,7 +130,6 @@ export async function upsertUser(uid: string, data: {
   const fullDoc = {
     displayName: data.displayName ?? '',
     avatarUrl: data.avatarUrl ?? null,
-    phone: data.phone ?? null,
     notifyOnlyWhenActive: false,
     memberGroupIds: [],
     createdAt: new Date(),

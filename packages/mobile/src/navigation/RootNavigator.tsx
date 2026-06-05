@@ -17,9 +17,6 @@ import type { AuthStackParamList, AppStackParamList } from './types';
 
 // ─── Screen imports ───────────────────────────────────────────────────────────
 import OnboardingScreen    from '../screens/OnboardingScreen';
-import PhoneScreen         from '../screens/PhoneScreen';
-import OTPScreen           from '../screens/OTPScreen';
-import DisplayNameScreen   from '../screens/DisplayNameScreen';
 import HomeScreen          from '../screens/HomeScreen';
 import GroupsListScreen    from '../screens/GroupsListScreen';
 import GroupDetailScreen   from '../screens/GroupDetailScreen';
@@ -42,10 +39,7 @@ const linking: LinkingOptions<AppStackParamList> = {
 
 const AuthNavigator: React.FC = () => (
   <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-    <AuthStack.Screen name="Onboarding"   component={OnboardingScreen} />
-    <AuthStack.Screen name="Phone"        component={PhoneScreen} />
-    <AuthStack.Screen name="OTP"          component={OTPScreen} />
-    <AuthStack.Screen name="DisplayName"  component={DisplayNameScreen} />
+    <AuthStack.Screen name="Onboarding" component={OnboardingScreen} />
   </AuthStack.Navigator>
 );
 

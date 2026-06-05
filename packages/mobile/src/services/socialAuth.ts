@@ -26,7 +26,7 @@ export async function signInWithApple(): Promise<void> {
     ? [fullName.givenName, fullName.familyName].filter(Boolean).join(' ')
     : user.displayName ?? 'Avail user';
 
-  await upsertUser(user.uid, { displayName, avatarUrl: user.photoURL ?? null, phone: null });
+  await upsertUser(user.uid, { displayName, avatarUrl: user.photoURL ?? null });
 
   useAuthStore.getState().setUser({
     id: user.uid,
@@ -52,7 +52,7 @@ export async function signInWithGoogle(): Promise<void> {
   const displayName = user.displayName ?? result.data?.user?.name ?? 'Avail user';
   const avatarUrl = user.photoURL ?? result.data?.user?.photo ?? null;
 
-  await upsertUser(user.uid, { displayName, avatarUrl, phone: null });
+  await upsertUser(user.uid, { displayName, avatarUrl });
 
   useAuthStore.getState().setUser({
     id: user.uid,

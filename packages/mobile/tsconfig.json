@@ -12,9 +12,18 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "paths": {
-      "@avail/shared": ["../shared/src/index.ts"]
+      "@avail/shared": [
+        "../shared/src/index.ts"
+      ]
     }
   },
-  "include": ["src/**/*", "index.ts", "app.json"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src/**/*",
+    "index.ts",
+    "app.json"
+  ],
+  "exclude": [
+    "node_modules"
+  ],
+  "extends": "expo/tsconfig.base"
 }
