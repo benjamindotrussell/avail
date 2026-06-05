@@ -204,11 +204,8 @@ const StatusPickerScreen: React.FC = () => {
             <Text style={styles.pillText}>{statusPillText()}</Text>
           </View>
           <Text style={styles.confirmSub}>Status expires in {state.expiryHours === 1 ? '1 hour' : `${state.expiryHours} hours`}.</Text>
-          <TouchableOpacity style={styles.homeBtn} onPress={() => navigation.navigate('Home')}>
-            <Text style={styles.homeBtnText}>Back to home</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.updateRow} onPress={() => navigation.goBack()}>
-            <Text style={styles.updateLink}>Update status</Text>
+          <TouchableOpacity style={styles.homeBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.homeBtnText}>Update status</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -351,10 +348,8 @@ const styles = StyleSheet.create({
   pillDot:         { width: 8, height: 8, borderRadius: 4, backgroundColor: colours.orange },
   pillText:        { fontSize: 13, fontWeight: '600', color: colours.orange },
   confirmSub:      { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 28 },
-  homeBtn:         { backgroundColor: colours.orange, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 48, marginBottom: 16 },
+  homeBtn:         { backgroundColor: colours.orange, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 48 },
   homeBtnText:     { fontSize: 16, fontWeight: '700', color: colours.white },
-  updateRow:       { paddingVertical: 8 },
-  updateLink:      { fontSize: 13, color: 'rgba(255,255,255,0.3)' },
 });
 
 export default StatusPickerScreen;
