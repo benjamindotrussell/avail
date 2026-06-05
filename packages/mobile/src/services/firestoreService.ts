@@ -152,26 +152,32 @@ export async function updateUser(uid: string, data: {
   notifyOnlyWhenActive?: boolean;
   defaultExpiryHours?: number;
 }): Promise<void> {
-  const batch = firestore().batch();
+  // Write user doc first — must always succeed.
+  await firestore().collection('users').doc(uid).update(data);
 
-  batch.update(firestore().collection('users').doc(uid), data);
-
+  // Propagate display name / avatar to group member docs (best-effort).
   if (data.displayName !== undefined || data.avatarUrl !== undefined) {
-    const userSnap = await firestore().collection('users').doc(uid).get();
-    const memberGroupIds: string[] = (userSnap.data() as FSUser)?.memberGroupIds ?? [];
-    const memberUpdate: Partial<FSMember> = {};
-    if (data.displayName !== undefined) memberUpdate.displayName = data.displayName;
-    if (data.avatarUrl !== undefined) memberUpdate.avatarUrl = data.avatarUrl;
+    try {
+      const userSnap = await firestore().collection('users').doc(uid).get();
+      const memberGroupIds: string[] = (userSnap.data() as FSUser)?.memberGroupIds ?? [];
+      if (memberGroupIds.length === 0) return;
 
-    for (const groupId of memberGroupIds) {
-      batch.update(
-        firestore().collection('groups').doc(groupId).collection('members').doc(uid),
-        memberUpdate,
-      );
+      const memberUpdate: Partial<FSMember> = {};
+      if (data.displayName !== undefined) memberUpdate.displayName = data.displayName;
+      if (data.avatarUrl !== undefined) memberUpdate.avatarUrl = data.avatarUrl;
+
+      const batch = firestore().batch();
+      for (const groupId of memberGroupIds) {
+        batch.update(
+          firestore().collection('groups').doc(groupId).collection('members').doc(uid),
+          memberUpdate,
+        );
+      }
+      await batch.commit();
+    } catch {
+      // Member doc updates are best-effort — user doc write already succeeded.
     }
   }
-
-  await batch.commit();
 }
 
 // ─── Groups — real-time subscription ─────────────────────────────────────────
