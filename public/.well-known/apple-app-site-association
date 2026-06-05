@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["NQ59JG6UUV.app.avail.mobile"],
+        "components": [
+          { "/": "/join/*" }
+        ]
+      }
+    ]
+  }
+}

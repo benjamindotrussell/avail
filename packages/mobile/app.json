@@ -13,6 +13,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.avail.mobile",
+      "associatedDomains": ["applinks:avail-app-b71d4.web.app"],
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Avail uses your photo library to set a profile picture.",
         "NSCameraUsageDescription": "Avail uses your camera to take a profile picture.",
@@ -26,7 +27,21 @@
         "backgroundColor": "#1C1A2E"
       },
       "package": "app.avail.mobile",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "avail-app-b71d4.web.app",
+              "pathPrefix": "/join"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "plugins": [
       [

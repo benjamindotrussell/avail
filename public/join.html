@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Join on Avail</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #1C1A2E; color: #fff; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; flex-direction: column; padding: 24px; box-sizing: border-box; text-align: center; }
+    h1 { font-size: 32px; font-weight: 800; color: #FF6B35; margin-bottom: 8px; }
+    p { color: rgba(255,255,255,0.6); font-size: 16px; line-height: 1.5; }
+    .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,107,53,0.2); border-top-color: #FF6B35; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 24px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #fallback { display: none; }
+  </style>
+  <script>
+    var code = window.location.pathname.replace(/.*\/join\//, '');
+    if (code) {
+      window.location.href = 'avail://join/' + code;
+    }
+    setTimeout(function () {
+      document.getElementById('opening').style.display = 'none';
+      document.getElementById('fallback').style.display = 'block';
+    }, 1800);
+  </script>
+</head>
+<body>
+  <div id="opening">
+    <div class="spinner"></div>
+    <h1>avail</h1>
+    <p>Opening Avail…</p>
+  </div>
+  <div id="fallback">
+    <h1>avail</h1>
+    <p>You've been invited to join a group on Avail.</p>
+    <p style="margin-top: 16px;">Download the app to accept the invite.</p>
+  </div>
+</body>
+</html>

@@ -399,7 +399,7 @@ export async function createInviteCode(groupId: string, uid: string): Promise<st
     createdAt: firestore.FieldValue.serverTimestamp(),
   });
 
-  return `avail://join/${code}`;
+  return `https://avail-app-b71d4.web.app/join/${code}`;
 }
 
 export async function joinGroupByCode(

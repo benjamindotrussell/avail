@@ -33,7 +33,11 @@ const AppStack   = createNativeStackNavigator<AppStackParamList>();
 const navigationRef = createNavigationContainerRef<AppStackParamList>();
 
 const linking: LinkingOptions<AppStackParamList> = {
-  prefixes: [Linking.createURL('/'), 'avail://'],
+  prefixes: [
+    Linking.createURL('/'),
+    'avail://',
+    'https://avail-app-b71d4.web.app',
+  ],
   config: { screens: { JoinGroup: 'join/:code' } },
 };
 
