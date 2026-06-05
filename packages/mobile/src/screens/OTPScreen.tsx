@@ -42,8 +42,10 @@ const OTPScreen: React.FC = () => {
       const confirmation = getConfirmation();
       if (!confirmation) throw new Error('Session expired. Go back and request a new code.');
 
-      const { user: fbUser } = await confirmation.confirm(otp);
+      const credential = await confirmation.confirm(otp);
       clearConfirmation();
+      const fbUser = credential?.user;
+      if (!fbUser) throw new Error('Sign-in failed. Please try again.');
 
       const existingUser = await getUser(fbUser.uid);
       if (existingUser) {

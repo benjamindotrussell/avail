@@ -108,7 +108,8 @@ function buildGroupDTO(
 export async function getUser(uid: string): Promise<UserDTO | null> {
   const snap = await firestore().collection('users').doc(uid).get();
   if (!snap.exists) return null;
-  const d = snap.data() as FSUser;
+  const d = snap.data() as FSUser | undefined;
+  if (!d) return null;
   return {
     id: uid,
     displayName: d.displayName,
