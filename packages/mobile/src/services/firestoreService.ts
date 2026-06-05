@@ -139,7 +139,7 @@ export async function upsertUser(uid: string, data: {
         phone: data.phone ?? null,
         notifyOnlyWhenActive: false,
         memberGroupIds: [],
-        createdAt: firestore.FieldValue.serverTimestamp(),
+        createdAt: firestore.Timestamp.fromDate(new Date()),
         ...data,
       });
     }
