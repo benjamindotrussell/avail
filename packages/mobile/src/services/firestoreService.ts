@@ -328,8 +328,6 @@ export async function leaveGroup(groupId: string, uid: string): Promise<void> {
 
 // ─── Status ───────────────────────────────────────────────────────────────────
 
-const STATUS_EXPIRY_HOURS = 8;
-
 export async function setStatus(
   groupId: string,
   uid: string,
@@ -339,10 +337,11 @@ export async function setStatus(
     locationNote?: string | null;
     vibe?: Vibe | null;
     vibeNote?: string | null;
+    expiryHours?: number;
   }
 ): Promise<StatusDTO> {
   const expiresAt = new Date();
-  expiresAt.setHours(expiresAt.getHours() + STATUS_EXPIRY_HOURS);
+  expiresAt.setHours(expiresAt.getHours() + (payload.expiryHours ?? 8));
 
   const statusData: FSStatus = {
     uid,

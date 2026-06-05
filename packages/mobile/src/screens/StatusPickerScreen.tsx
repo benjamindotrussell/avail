@@ -14,7 +14,7 @@ import { formatLocation, formatVibe } from '../utils/statusHelpers';
 import type { Availability, Location, Vibe } from '@avail/shared';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Step = 'availability' | 'location' | 'vibe' | 'confirm';
+type Step = 'availability' | 'location' | 'vibe' | 'expiry' | 'confirm';
 
 interface PickerState {
   availability: Availability | null;
@@ -22,6 +22,7 @@ interface PickerState {
   locationNote: string;
   vibe: Vibe | null;
   vibeNote: string;
+  expiryHours: number;
 }
 
 interface Option {
@@ -54,10 +55,18 @@ const VIBE_OPTS: Option[] = [
   { value: 'other',      label: 'Other…',                sub: 'Type your own vibe',            dotColour: colours.stone  },
 ];
 
+const EXPIRY_OPTS: Option[] = [
+  { value: '1', label: '1 hour',   sub: 'Just for now',         dotColour: colours.yellow },
+  { value: '2', label: '2 hours',  sub: 'A couple of hours',    dotColour: colours.yellow },
+  { value: '4', label: '4 hours',  sub: 'Most of the evening',  dotColour: colours.coral  },
+  { value: '8', label: '8 hours',  sub: 'All night',            dotColour: colours.orange },
+];
+
 const STEPS: Record<string, { question: string; hint: string; opts: Option[]; skippable: boolean }> = {
   availability: { question: 'How free\nare you?', hint: 'Your crew sees this instantly if you are free', opts: AVAILABILITY_OPTS, skippable: false },
   location:     { question: 'Where to?', hint: "Optional — skip if you're flexible", opts: LOCATION_OPTS, skippable: true },
   vibe:         { question: "What's the vibe?", hint: "Optional — skip if you're easy either way", opts: VIBE_OPTS, skippable: true },
+  expiry:       { question: 'How long\nare you free?', hint: 'Skip to use the default of 8 hours', opts: EXPIRY_OPTS, skippable: true },
 };
 
 // ─── Option row component ─────────────────────────────────────────────────────
@@ -94,14 +103,15 @@ const StatusPickerScreen: React.FC = () => {
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
 
-  const [state, setState]       = useState<PickerState>({ availability: null, location: null, locationNote: '', vibe: null, vibeNote: '' });
+  const [state, setState]       = useState<PickerState>({ availability: null, location: null, locationNote: '', vibe: null, vibeNote: '', expiryHours: 8 });
   const [stepIdx, setStepIdx]   = useState(0);
   const [loading, setLoading]   = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
   const getActiveSteps = (): Step[] => {
     if (!state.availability || state.availability === 'busy') return ['availability', 'confirm'];
-    return ['availability', 'location', 'vibe', 'confirm'];
+    if (state.availability === 'maybe') return ['availability', 'expiry', 'confirm'];
+    return ['availability', 'location', 'vibe', 'expiry', 'confirm'];
   };
 
   const activeSteps = getActiveSteps();
@@ -113,6 +123,7 @@ const StatusPickerScreen: React.FC = () => {
     if (currentStep === 'availability') return state.availability;
     if (currentStep === 'location')     return state.location;
     if (currentStep === 'vibe')         return state.vibe;
+    if (currentStep === 'expiry')       return String(state.expiryHours);
     return null;
   };
 
@@ -120,6 +131,7 @@ const StatusPickerScreen: React.FC = () => {
     if (currentStep === 'availability') setState((s) => ({ ...s, availability: value as Availability }));
     if (currentStep === 'location')     setState((s) => ({ ...s, location: value as Location }));
     if (currentStep === 'vibe')         setState((s) => ({ ...s, vibe: value as Vibe }));
+    if (currentStep === 'expiry')       setState((s) => ({ ...s, expiryHours: Number(value) }));
   };
 
   const handleNext = () => {
@@ -149,6 +161,7 @@ const StatusPickerScreen: React.FC = () => {
         locationNote: state.location === 'other' ? state.locationNote.trim() : null,
         vibe: state.vibe,
         vibeNote: state.vibe === 'other' ? state.vibeNote.trim() : null,
+        expiryHours: state.expiryHours,
       });
       setMyStatus(groupId, status);
       if (state.availability === 'busy') {
@@ -190,7 +203,7 @@ const StatusPickerScreen: React.FC = () => {
             <View style={styles.pillDot} />
             <Text style={styles.pillText}>{statusPillText()}</Text>
           </View>
-          <Text style={styles.confirmSub}>Status expires in 8 hours.</Text>
+          <Text style={styles.confirmSub}>Status expires in {state.expiryHours === 1 ? '1 hour' : `${state.expiryHours} hours`}.</Text>
           <TouchableOpacity style={styles.homeBtn} onPress={() => navigation.navigate('Home')}>
             <Text style={styles.homeBtnText}>Back to home</Text>
           </TouchableOpacity>
