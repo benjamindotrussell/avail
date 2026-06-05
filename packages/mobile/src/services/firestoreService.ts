@@ -12,6 +12,7 @@ interface FSUser {
   displayName: string;
   avatarUrl: string | null;
   notifyOnlyWhenActive: boolean;
+  defaultExpiryHours?: number;
   phone: string | null;
   memberGroupIds: string[];
   createdAt: Timestamp;
@@ -116,6 +117,7 @@ export async function getUser(uid: string): Promise<UserDTO | null> {
     avatarUrl: d.avatarUrl,
     createdAt: tsToDate(d.createdAt).toISOString(),
     notifyOnlyWhenActive: d.notifyOnlyWhenActive,
+    defaultExpiryHours: d.defaultExpiryHours ?? 8,
   };
 }
 
@@ -148,6 +150,7 @@ export async function updateUser(uid: string, data: {
   displayName?: string;
   avatarUrl?: string | null;
   notifyOnlyWhenActive?: boolean;
+  defaultExpiryHours?: number;
 }): Promise<void> {
   const batch = firestore().batch();
 

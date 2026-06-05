@@ -103,7 +103,7 @@ const StatusPickerScreen: React.FC = () => {
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
 
-  const [state, setState]       = useState<PickerState>({ availability: null, location: null, locationNote: '', vibe: null, vibeNote: '', expiryHours: 8 });
+  const [state, setState]       = useState<PickerState>({ availability: null, location: null, locationNote: '', vibe: null, vibeNote: '', expiryHours: user?.defaultExpiryHours ?? 8 });
   const [stepIdx, setStepIdx]   = useState(0);
   const [loading, setLoading]   = useState(false);
   const [confirmed, setConfirmed] = useState(false);

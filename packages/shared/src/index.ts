@@ -34,6 +34,7 @@ export interface UserDTO {
   avatarUrl: string | null;
   createdAt: string;
   notifyOnlyWhenActive: boolean;
+  defaultExpiryHours: number;
 }
 
 // ─── Group types ──────────────────────────────────────────────────────────────

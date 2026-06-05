@@ -34,6 +34,7 @@ export async function signInWithApple(): Promise<void> {
     avatarUrl: user.photoURL ?? null,
     createdAt: new Date().toISOString(),
     notifyOnlyWhenActive: false,
+    defaultExpiryHours: 8,
   });
 }
 
@@ -59,5 +60,6 @@ export async function signInWithGoogle(): Promise<void> {
     avatarUrl,
     createdAt: new Date().toISOString(),
     notifyOnlyWhenActive: false,
+    defaultExpiryHours: 8,
   });
 }

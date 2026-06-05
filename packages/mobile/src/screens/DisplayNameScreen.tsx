@@ -13,15 +13,17 @@ const DisplayNameScreen: React.FC = () => {
   const phone               = route.params?.phone ?? null;
   const [name, setName]     = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError]   = useState<string | null>(null);
   const { setUser }         = useAuthStore();
   const insets = useSafeAreaInsets();
 
   const handleSave = async () => {
     if (!name.trim()) return;
     setLoading(true);
+    setError(null);
     try {
       const uid = auth().currentUser?.uid;
-      if (!uid) return;
+      if (!uid) throw new Error('Not signed in. Go back and try again.');
       await upsertUser(uid, { displayName: name.trim(), phone });
       setUser({
         id: uid,
@@ -29,7 +31,10 @@ const DisplayNameScreen: React.FC = () => {
         avatarUrl: null,
         createdAt: new Date().toISOString(),
         notifyOnlyWhenActive: false,
+        defaultExpiryHours: 8,
       });
+    } catch (err: any) {
+      setError(err?.message ?? 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -47,6 +52,7 @@ const DisplayNameScreen: React.FC = () => {
         maxLength={50}
         autoFocus
       />
+      {error && <Text style={styles.error}>{error}</Text>}
       <TouchableOpacity
         style={[styles.btn, !name.trim() && styles.btnDisabled]}
         onPress={handleSave}
@@ -62,6 +68,7 @@ const styles = StyleSheet.create({
   container:   { flex: 1, backgroundColor: colours.warmWhite, padding: 24, paddingTop: 80 },
   title:       { fontSize: 28, fontWeight: '700', color: colours.darkText, marginBottom: 32, lineHeight: 34 },
   input:       { fontSize: 20, fontWeight: '500', color: colours.darkText, borderBottomWidth: 1.5, borderBottomColor: colours.orange, paddingVertical: 12, marginBottom: 8 },
+  error:       { fontSize: 12, color: '#CC0000', marginBottom: 8 },
   btn:         { backgroundColor: colours.plum, borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 24 },
   btnDisabled: { opacity: 0.35 },
   btnText:     { fontSize: 15, fontWeight: '700', color: colours.white },
