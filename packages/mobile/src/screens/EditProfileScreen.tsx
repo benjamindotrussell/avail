@@ -12,15 +12,19 @@ const EditProfileScreen: React.FC = () => {
   const { user, updateUser: updateUserStore } = useAuthStore();
   const [name, setName]       = useState(user?.displayName ?? '');
   const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
   const insets = useSafeAreaInsets();
 
   const handleSave = async () => {
     if (!name.trim() || !user?.id) return;
     setLoading(true);
+    setError(null);
     try {
       await updateUser(user.id, { displayName: name.trim() });
       updateUserStore({ displayName: name.trim() });
       navigation.goBack();
+    } catch (err: any) {
+      setError(err?.message ?? 'Failed to save. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -43,6 +47,7 @@ const EditProfileScreen: React.FC = () => {
         autoFocus
         onSubmitEditing={handleSave}
       />
+      {error && <Text style={styles.error}>{error}</Text>}
 
       <TouchableOpacity
         style={[styles.btn, !name.trim() && styles.btnDisabled]}
@@ -65,6 +70,7 @@ const styles = StyleSheet.create({
   title:       { fontSize: 28, fontWeight: '700', color: colours.darkText, marginBottom: 36 },
   fieldLabel:  { fontSize: 11, fontWeight: '700', color: colours.stone, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 },
   input:       { fontSize: 22, fontWeight: '500', color: colours.darkText, borderBottomWidth: 2, borderBottomColor: colours.orange, paddingVertical: 14 },
+  error:       { fontSize: 12, color: '#CC0000', marginTop: 8 },
   btn:         { backgroundColor: colours.plum, borderRadius: 14, paddingVertical: 18, alignItems: 'center', marginTop: 36 },
   btnDisabled: { opacity: 0.35 },
   btnText:     { fontSize: 16, fontWeight: '700', color: colours.white },

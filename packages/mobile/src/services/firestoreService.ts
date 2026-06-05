@@ -147,7 +147,26 @@ export async function updateUser(uid: string, data: {
   avatarUrl?: string | null;
   notifyOnlyWhenActive?: boolean;
 }): Promise<void> {
-  await firestore().collection('users').doc(uid).update(data);
+  const batch = firestore().batch();
+
+  batch.update(firestore().collection('users').doc(uid), data);
+
+  if (data.displayName !== undefined || data.avatarUrl !== undefined) {
+    const userSnap = await firestore().collection('users').doc(uid).get();
+    const memberGroupIds: string[] = (userSnap.data() as FSUser)?.memberGroupIds ?? [];
+    const memberUpdate: Partial<FSMember> = {};
+    if (data.displayName !== undefined) memberUpdate.displayName = data.displayName;
+    if (data.avatarUrl !== undefined) memberUpdate.avatarUrl = data.avatarUrl;
+
+    for (const groupId of memberGroupIds) {
+      batch.update(
+        firestore().collection('groups').doc(groupId).collection('members').doc(uid),
+        memberUpdate,
+      );
+    }
+  }
+
+  await batch.commit();
 }
 
 // ─── Groups — real-time subscription ─────────────────────────────────────────
