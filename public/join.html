@@ -5,34 +5,78 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Join on Avail</title>
   <style>
-    body { font-family: -apple-system, sans-serif; background: #1C1A2E; color: #fff; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; flex-direction: column; padding: 24px; box-sizing: border-box; text-align: center; }
-    h1 { font-size: 32px; font-weight: 800; color: #FF6B35; margin-bottom: 8px; }
-    p { color: rgba(255,255,255,0.6); font-size: 16px; line-height: 1.5; }
-    .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,107,53,0.2); border-top-color: #FF6B35; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 24px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #1C1A2E; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; text-align: center; flex-direction: column; }
+    h1 { font-size: 36px; font-weight: 800; color: #FF6B35; margin-bottom: 8px; letter-spacing: -1px; }
+    .tagline { color: rgba(255,255,255,0.45); font-size: 15px; margin-bottom: 32px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,107,53,0.2); border-top-color: #FF6B35; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 24px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     #fallback { display: none; }
+    .invite-box { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px 24px; margin-bottom: 28px; }
+    .invite-box p { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 4px; }
+    .invite-box strong { font-size: 18px; color: #fff; }
+    .store-btns { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 320px; }
+    .store-btn { display: block; padding: 16px; border-radius: 14px; font-size: 16px; font-weight: 600; text-decoration: none; }
+    .ios-btn { background: #000; color: #fff; }
+    .android-btn { background: #FF6B35; color: #fff; }
+    .copied-note { margin-top: 20px; font-size: 12px; color: rgba(255,255,255,0.35); }
   </style>
   <script>
-    var code = window.location.pathname.replace(/.*\/join\//, '');
+    var code = window.location.pathname.replace(/.*\/join\//, '').split('?')[0];
+
     if (code) {
       window.location.href = 'avail://join/' + code;
     }
-    setTimeout(function () {
+
+    function copyToClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(function() {});
+      } else {
+        var el = document.createElement('textarea');
+        el.value = text;
+        el.style.position = 'fixed';
+        el.style.opacity = '0';
+        document.body.appendChild(el);
+        el.select();
+        try { document.execCommand('copy'); } catch(e) {}
+        document.body.removeChild(el);
+      }
+    }
+
+    setTimeout(function() {
       document.getElementById('opening').style.display = 'none';
-      document.getElementById('fallback').style.display = 'block';
+      document.getElementById('fallback').style.display = 'flex';
+      // Copy the invite link so the app can detect it after install
+      copyToClipboard(window.location.href);
     }, 1800);
   </script>
 </head>
 <body>
-  <div id="opening">
+  <div id="opening" style="display:flex;flex-direction:column;align-items:center;">
     <div class="spinner"></div>
     <h1>avail</h1>
-    <p>Opening Avail…</p>
+    <p class="tagline">Opening the app…</p>
   </div>
-  <div id="fallback">
+
+  <div id="fallback" style="flex-direction:column;align-items:center;width:100%;">
     <h1>avail</h1>
-    <p>You've been invited to join a group on Avail.</p>
-    <p style="margin-top: 16px;">Download the app to accept the invite.</p>
+    <p class="tagline">know who's free, before you even ask.</p>
+
+    <div class="invite-box">
+      <p>You've been invited to join a group.</p>
+      <p style="margin-top:8px;color:rgba(255,255,255,0.4);font-size:13px;">Download Avail, sign in, and your invite will be waiting.</p>
+    </div>
+
+    <div class="store-btns">
+      <a class="store-btn ios-btn" href="https://apps.apple.com/app/avail/PLACEHOLDER_IOS">
+         Download on the App Store
+      </a>
+      <a class="store-btn android-btn" href="https://play.google.com/store/apps/details?id=app.avail.mobile">
+        ▶ Get it on Google Play
+      </a>
+    </div>
+
+    <p class="copied-note">Invite link copied — it'll open automatically after you install.</p>
   </div>
 </body>
 </html>

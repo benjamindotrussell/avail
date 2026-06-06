@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer, LinkingOptions, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Linking from 'expo-linking';
+import * as Clipboard from 'expo-clipboard';
 import auth from '@react-native-firebase/auth';
 import { getUser } from '../services/firestoreService';
 import { useAuthStore } from '../store/authStore';
@@ -94,6 +95,17 @@ const RootNavigator: React.FC = () => {
         setPendingCode(code);
       }
     });
+
+    // Deferred deep link — check clipboard for an invite URL copied by the web fallback page
+    Clipboard.getStringAsync().then(text => {
+      if (!text) return;
+      const code = extractInviteCode(text);
+      if (code && !pendingCodeRef.current) {
+        pendingCodeRef.current = code;
+        setPendingCode(code);
+        Clipboard.setStringAsync(''); // consume it so it doesn't re-trigger
+      }
+    }).catch(() => {});
 
     // Handle links received while the app is open and user is not yet authed
     const sub = Linking.addEventListener('url', ({ url }) => {
