@@ -20,7 +20,7 @@ export const setupAndroidChannel = async (): Promise<void> => {
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: '#FF6B35',
-    sound: 'default',
+    sound: true,
   });
 };
 

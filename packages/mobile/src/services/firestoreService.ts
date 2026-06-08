@@ -212,9 +212,10 @@ function subscribeToGroup(
     let groupMeta: FSGroup | null = null;
     const membersMap = new Map<string, FSMember>();
     const statusesMap = new Map<string, FSStatus>();
+    let membersReady = false; // don't emit until first members snapshot arrives
 
     const merge = () => {
-      if (!groupMeta) return;
+      if (!groupMeta || !membersReady) return;
       retryDelay = 1500; // reset backoff on successful data delivery
       onUpdate(buildGroupDTO(groupId, groupMeta, membersMap, statusesMap));
     };
@@ -238,6 +239,7 @@ function subscribeToGroup(
           if (change.type === 'removed') membersMap.delete(change.doc.id);
           else membersMap.set(change.doc.id, change.doc.data() as FSMember);
         });
+        membersReady = true;
         merge();
       }, onError),
 
@@ -425,7 +427,7 @@ export async function joinGroupByCode(
   uid: string,
   displayName: string,
   avatarUrl: string | null,
-): Promise<string> {
+): Promise<{ groupId: string; alreadyMember: boolean }> {
   const inviteSnap = await firestore().collection('inviteCodes').doc(code).get();
   if (!inviteSnap.exists) throw new Error('Invalid invite link');
 
@@ -434,18 +436,27 @@ export async function joinGroupByCode(
 
   const groupId = invite.groupId;
 
-  const existingMember = await firestore().collection('groups').doc(groupId).collection('members').doc(uid).get();
-
-  if (!existingMember.exists) {
-    await firestore().collection('groups').doc(groupId).collection('members').doc(uid).set({
-      uid, role: 'member', displayName, avatarUrl, joinedAt: new Date(),
-    });
-  }
+  // Transaction forces a server-side read (never local cache) so we get the
+  // accurate membership state, and the write is committed atomically.
+  let alreadyMember = false;
+  await firestore().runTransaction(async (tx) => {
+    const memberRef = firestore()
+      .collection('groups').doc(groupId)
+      .collection('members').doc(uid);
+    const snap = await tx.get(memberRef);
+    // snap.exists is a native method in RN Firebase transactions — use data() instead
+    alreadyMember = snap.data() !== undefined;
+    console.log(`[join] groupId=${groupId} uid=${uid} alreadyMember=${alreadyMember}`);
+    if (!alreadyMember) {
+      tx.set(memberRef, { uid, role: 'member', displayName, avatarUrl, joinedAt: new Date() });
+    }
+  });
+  console.log(`[join] transaction done — alreadyMember=${alreadyMember}`);
 
   // Always ensure memberGroupIds is up to date (handles partial failure recovery)
   await addToUserGroups(uid, groupId);
 
-  return groupId;
+  return { groupId, alreadyMember };
 }
 
 // ─── Device tokens ────────────────────────────────────────────────────────────

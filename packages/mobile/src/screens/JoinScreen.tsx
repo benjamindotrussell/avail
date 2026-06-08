@@ -26,7 +26,7 @@ const JoinScreen: React.FC = () => {
     setStatus('joining');
 
     joinGroupByCode(code, user.id, user.displayName, user.avatarUrl ?? null)
-      .then(groupId => {
+      .then(({ groupId }) => {
         const groupName = groups.find(g => g.id === groupId)?.name ?? 'Group';
         navigation.reset({
           index: 1,

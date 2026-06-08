@@ -22,10 +22,17 @@ const GroupsListScreen: React.FC = () => {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Groups</Text>
-        <TouchableOpacity style={styles.newBtn} onPress={() => navigation.navigate('CreateGroup')}>
-          <Text style={styles.newBtnText}>+ New group</Text>
-        </TouchableOpacity>
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+            <Text style={styles.backLink}>← Home</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Groups</Text>
+          <TouchableOpacity style={styles.newBtn} onPress={() => navigation.navigate('CreateGroup')}>
+            <Text style={styles.newBtnText}>+ New group</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Empty state */}
@@ -83,7 +90,10 @@ const styles = StyleSheet.create({
   container:       { flex: 1, backgroundColor: colours.warmWhite },
   emptyContainer:  { flex: 1 },
 
-  header:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 64, paddingBottom: 20 },
+  header:          { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 20 },
+  headerTop:       { marginBottom: 12 },
+  backLink:        { fontSize: 14, color: colours.stone, fontWeight: '500' },
+  headerRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title:           { fontSize: 28, fontWeight: '700', color: colours.darkText },
   newBtn:          { backgroundColor: colours.orange, borderRadius: 99, paddingVertical: 8, paddingHorizontal: 16 },
   newBtnText:      { fontSize: 13, fontWeight: '700', color: colours.white },

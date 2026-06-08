@@ -80,9 +80,14 @@ const GroupDetailScreen: React.FC = () => {
     >
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.back}>← Groups</Text>
-        </TouchableOpacity>
+        <View style={styles.headerNav}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.back}>← Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+            <Text style={styles.back}>Home</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.groupName}>{group?.name ?? groupName}</Text>
         <Text style={styles.meta}>
           {group?.members.length ?? 0} {(group?.members.length ?? 0) === 1 ? 'member' : 'members'}
@@ -156,7 +161,7 @@ const GroupDetailScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container:       { flex: 1, backgroundColor: colours.warmWhite },
   header:          { backgroundColor: colours.orange, paddingHorizontal: 20, paddingTop: 64, paddingBottom: 24 },
-  backBtn:         { marginBottom: 16 },
+  headerNav:       { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   back:            { fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
   groupName:       { fontSize: 28, fontWeight: '700', color: colours.white, marginBottom: 6 },
   meta:            { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginBottom: 10 },

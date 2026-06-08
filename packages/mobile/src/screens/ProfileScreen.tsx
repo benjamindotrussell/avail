@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Switch, StyleSheet, Alert } f
 import { useNavigation } from '@react-navigation/native';
 import type { AppNavProp } from '../navigation/types';
 import auth from '@react-native-firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useAuthStore } from '../store/authStore';
 import { useStatusStore } from '../store/statusStore';
 import { useGroupsStore } from '../store/groupsStore';
@@ -20,6 +21,7 @@ const ProfileScreen: React.FC = () => {
     clearStatus();
     clearGroups();
     auth().signOut().catch(() => {});
+    GoogleSignin.signOut().catch(() => {});
   };
 
   const handleDeleteAccount = () => {

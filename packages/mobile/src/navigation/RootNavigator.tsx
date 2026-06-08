@@ -184,9 +184,14 @@ const RootNavigator: React.FC = () => {
     });
   }, [isAuthenticated, navReady]);
 
-  // Once authenticated, consume the pending code (AppNavigator handles it on mount)
+  // Consume pending code on login; discard it on logout so it can't re-fire
   useEffect(() => {
-    if (isAuthenticated && pendingCodeRef.current) {
+    if (!isAuthenticated) {
+      setPendingCode(null);
+      pendingCodeRef.current = null;
+      return;
+    }
+    if (pendingCodeRef.current) {
       setPendingCode(pendingCodeRef.current);
       pendingCodeRef.current = null;
     }
