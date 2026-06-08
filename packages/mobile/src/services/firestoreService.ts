@@ -299,6 +299,24 @@ export function subscribeToGroups(
   };
 }
 
+// ─── memberGroupIds helpers ───────────────────────────────────────────────────
+
+async function addToUserGroups(uid: string, groupId: string): Promise<void> {
+  const ref = firestore().collection('users').doc(uid);
+  const snap = await ref.get();
+  const ids: string[] = (snap.data() as FSUser)?.memberGroupIds ?? [];
+  if (!ids.includes(groupId)) {
+    await ref.update({ memberGroupIds: [...ids, groupId] });
+  }
+}
+
+async function removeFromUserGroups(uid: string, groupId: string): Promise<void> {
+  const ref = firestore().collection('users').doc(uid);
+  const snap = await ref.get();
+  const ids: string[] = (snap.data() as FSUser)?.memberGroupIds ?? [];
+  await ref.update({ memberGroupIds: ids.filter(id => id !== groupId) });
+}
+
 // ─── Groups — writes ──────────────────────────────────────────────────────────
 
 export async function createGroup(uid: string, displayName: string, name: string): Promise<string> {
@@ -310,9 +328,8 @@ export async function createGroup(uid: string, displayName: string, name: string
   const memberRef = firestore().collection('groups').doc(groupRef.id).collection('members').doc(uid);
   batch.set(memberRef, { uid, role: 'admin', displayName, avatarUrl: null, joinedAt: new Date() });
 
-  batch.update(firestore().collection('users').doc(uid), { memberGroupIds: firestore.FieldValue.arrayUnion(groupRef.id) });
-
   await batch.commit();
+  await addToUserGroups(uid, groupRef.id);
   return groupRef.id;
 }
 
@@ -325,24 +342,23 @@ export async function deleteGroup(groupId: string, uid: string): Promise<void> {
   const membersSnap = await firestore().collection('groups').doc(groupId).collection('members').get();
   const batch = firestore().batch();
 
-  membersSnap.docs.forEach(m => {
-    batch.update(firestore().collection('users').doc(m.id), { memberGroupIds: firestore.FieldValue.arrayRemove(groupId) });
-    batch.delete(m.ref);
-  });
+  membersSnap.docs.forEach(m => batch.delete(m.ref));
 
   const statusesSnap = await firestore().collection('groups').doc(groupId).collection('statuses').get();
   statusesSnap.docs.forEach(s => batch.delete(s.ref));
 
   batch.delete(firestore().collection('groups').doc(groupId));
   await batch.commit();
+
+  await Promise.all(membersSnap.docs.map(m => removeFromUserGroups(m.id, groupId)));
 }
 
 export async function leaveGroup(groupId: string, uid: string): Promise<void> {
   const batch = firestore().batch();
   batch.delete(firestore().collection('groups').doc(groupId).collection('members').doc(uid));
   batch.delete(firestore().collection('groups').doc(groupId).collection('statuses').doc(uid));
-  batch.update(firestore().collection('users').doc(uid), { memberGroupIds: firestore.FieldValue.arrayRemove(groupId) });
   await batch.commit();
+  await removeFromUserGroups(uid, groupId);
 }
 
 // ─── Status ───────────────────────────────────────────────────────────────────
@@ -417,14 +433,15 @@ export async function joinGroupByCode(
   const groupId = invite.groupId;
 
   const existingMember = await firestore().collection('groups').doc(groupId).collection('members').doc(uid).get();
-  if (existingMember.exists) return groupId;
 
-  const batch = firestore().batch();
-  batch.set(firestore().collection('groups').doc(groupId).collection('members').doc(uid), {
-    uid, role: 'member', displayName, avatarUrl, joinedAt: new Date(),
-  });
-  batch.update(firestore().collection('users').doc(uid), { memberGroupIds: firestore.FieldValue.arrayUnion(groupId) });
-  await batch.commit();
+  if (!existingMember.exists) {
+    await firestore().collection('groups').doc(groupId).collection('members').doc(uid).set({
+      uid, role: 'member', displayName, avatarUrl, joinedAt: new Date(),
+    });
+  }
+
+  // Always ensure memberGroupIds is up to date (handles partial failure recovery)
+  await addToUserGroups(uid, groupId);
 
   return groupId;
 }
