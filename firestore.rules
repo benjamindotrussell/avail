@@ -27,8 +27,10 @@ service cloud.firestore {
 
       // ─── Members subcollection ──────────────────────────────────────────
       match /members/{uid} {
-        // Members can read the full member list
-        allow read: if request.auth != null && isMember(groupId);
+        // Members can read the full member list; users can also read their own doc
+        // (needed to check existing membership before joining via invite)
+        allow read: if request.auth != null &&
+          (isMember(groupId) || request.auth.uid == uid);
 
         // Only the user themselves or an admin can write their member doc
         allow write: if request.auth != null &&
