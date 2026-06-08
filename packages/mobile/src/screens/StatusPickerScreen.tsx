@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
+  View, Text, TouchableOpacity, StyleSheet, Alert,
   ScrollView, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -169,8 +169,9 @@ const StatusPickerScreen: React.FC = () => {
       } else {
         setConfirmed(true);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[Picker] Broadcast failed:', err);
+      Alert.alert('Could not set status', err?.message ?? 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }

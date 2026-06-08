@@ -197,6 +197,7 @@ function subscribeToGroup(
   let stopped = false;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   let activeUnsubs: Array<() => void> = [];
+  let retryDelay = 1500;
 
   const teardown = () => {
     activeUnsubs.forEach(u => u());
@@ -214,14 +215,15 @@ function subscribeToGroup(
 
     const merge = () => {
       if (!groupMeta) return;
+      retryDelay = 1500; // reset backoff on successful data delivery
       onUpdate(buildGroupDTO(groupId, groupMeta, membersMap, statusesMap));
     };
 
-    const onError = (err: any) => {
-      if (err?.code === 'firestore/permission-denied') {
-        teardown();
-        retryTimer = setTimeout(setup, 1500);
-      }
+    const onError = (_err: any) => {
+      if (stopped) return;
+      teardown();
+      retryTimer = setTimeout(setup, retryDelay);
+      retryDelay = Math.min(retryDelay * 2, 30_000); // cap at 30s
     };
 
     activeUnsubs.push(
