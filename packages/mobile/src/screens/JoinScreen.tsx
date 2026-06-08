@@ -32,7 +32,7 @@ const JoinScreen: React.FC = () => {
         } else if (msg.includes('Invalid')) {
           setError('This invite link is invalid.');
         } else {
-          setError('Something went wrong. Please try again.');
+          setError(`Something went wrong: ${msg || 'unknown error'}`);
         }
       });
   }, [code, user?.id]);

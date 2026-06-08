@@ -305,10 +305,10 @@ export async function createGroup(uid: string, displayName: string, name: string
   const batch = firestore().batch();
 
   const groupRef = firestore().collection('groups').doc();
-  batch.set(groupRef, { name, createdBy: uid, createdAt: firestore.FieldValue.serverTimestamp() });
+  batch.set(groupRef, { name, createdBy: uid, createdAt: new Date() });
 
   const memberRef = firestore().collection('groups').doc(groupRef.id).collection('members').doc(uid);
-  batch.set(memberRef, { uid, role: 'admin', displayName, avatarUrl: null, joinedAt: firestore.FieldValue.serverTimestamp() });
+  batch.set(memberRef, { uid, role: 'admin', displayName, avatarUrl: null, joinedAt: new Date() });
 
   batch.update(firestore().collection('users').doc(uid), { memberGroupIds: firestore.FieldValue.arrayUnion(groupRef.id) });
 
@@ -396,7 +396,7 @@ export async function createInviteCode(groupId: string, uid: string): Promise<st
     groupId,
     createdBy: uid,
     expiresAt: firestore.Timestamp.fromDate(expiresAt),
-    createdAt: firestore.FieldValue.serverTimestamp(),
+    createdAt: new Date(),
   });
 
   return `https://avail-app-b71d4.web.app/join/${code}`;
@@ -421,7 +421,7 @@ export async function joinGroupByCode(
 
   const batch = firestore().batch();
   batch.set(firestore().collection('groups').doc(groupId).collection('members').doc(uid), {
-    uid, role: 'member', displayName, avatarUrl, joinedAt: firestore.FieldValue.serverTimestamp(),
+    uid, role: 'member', displayName, avatarUrl, joinedAt: new Date(),
   });
   batch.update(firestore().collection('users').doc(uid), { memberGroupIds: firestore.FieldValue.arrayUnion(groupId) });
   await batch.commit();
@@ -433,7 +433,7 @@ export async function joinGroupByCode(
 
 export async function registerDeviceToken(uid: string, token: string, platform: 'ios' | 'android'): Promise<void> {
   await firestore().collection('users').doc(uid).collection('deviceTokens').doc(token).set({
-    token, platform, createdAt: firestore.FieldValue.serverTimestamp(),
+    token, platform, createdAt: new Date(),
   });
 }
 
