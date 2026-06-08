@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Linking from 'expo-linking';
 import * as Clipboard from 'expo-clipboard';
 import auth from '@react-native-firebase/auth';
-import { getUser } from '../services/firestoreService';
+import { getUser, subscribeToGroups } from '../services/firestoreService';
 import { useAuthStore } from '../store/authStore';
 import { useGroupsStore } from '../store/groupsStore';
 import {
@@ -75,6 +75,7 @@ const AppNavigator: React.FC<{ pendingCode?: string | null }> = ({ pendingCode }
 
 const RootNavigator: React.FC = () => {
   const { isAuthenticated, setUser, clearAuth, user } = useAuthStore();
+  const { setGroups, clearGroups } = useGroupsStore();
   const [authReady, setAuthReady]   = useState(false);
   const [animDone, setAnimDone]     = useState(false);
   const [navReady, setNavReady]     = useState(false);
@@ -148,6 +149,17 @@ const RootNavigator: React.FC = () => {
     const groupName = groups.find(g => g.id === groupId)?.name ?? 'Group';
     navigationRef.navigate('GroupDetail', { groupId, groupName });
   };
+
+  // Groups subscription — lives here so it runs regardless of which screen is active
+  // (critical for the invite link join flow where HomeScreen may not be mounted)
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+    const unsubscribe = subscribeToGroups(user.id, setGroups);
+    return () => {
+      unsubscribe();
+      clearGroups();
+    };
+  }, [isAuthenticated, user?.id]);
 
   // Push notifications when authenticated
   useEffect(() => {

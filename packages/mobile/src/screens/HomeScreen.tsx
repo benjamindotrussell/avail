@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { AppNavProp } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { useStatusStore } from '../store/statusStore';
 import { useGroupsStore } from '../store/groupsStore';
-import { subscribeToGroups, setStatus, updateUser } from '../services/firestoreService';
+import { setStatus, updateUser } from '../services/firestoreService';
 import { colours, dotColour, statusColour } from '../constants/colours';
 import { formatStatus, formatStatusDetail } from '../utils/statusHelpers';
 
@@ -13,17 +13,11 @@ const HomeScreen: React.FC = () => {
   const navigation                        = useNavigation<AppNavProp<'Home'>>();
   const { user, setNotifyOnlyWhenActive } = useAuthStore();
   const { myStatuses, setMyStatus }       = useStatusStore();
-  const { groups, setGroups }             = useGroupsStore();
+  const { groups }                        = useGroupsStore();
   const [settingBusy, setSettingBusy]     = useState(false);
 
   const availableMode = user?.notifyOnlyWhenActive ?? false;
 
-  // Real-time Firestore subscription for all groups
-  useEffect(() => {
-    if (!user?.id) return;
-    const unsubscribe = subscribeToGroups(user.id, setGroups);
-    return unsubscribe;
-  }, [user?.id]);
 
   const setBusyEverywhere = async () => {
     if (!groups.length || !user?.id) return;
