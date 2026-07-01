@@ -1,7 +1,12 @@
-import auth from '@react-native-firebase/auth';
+import {
+  getAuth,
+  signInWithCredential,
+  GoogleAuthProvider,
+  AppleAuthProvider,
+} from '@react-native-firebase/auth';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { upsertUser } from './firestoreService';
+import { upsertUser, getUser } from './firestoreService';
 import { useAuthStore } from '../store/authStore';
 
 GoogleSignin.configure({
@@ -19,8 +24,8 @@ export async function signInWithApple(): Promise<void> {
   const { identityToken, fullName } = result;
   if (!identityToken) throw new Error('No identity token returned from Apple');
 
-  const appleCredential = auth.AppleAuthProvider.credential(identityToken);
-  const { user } = await auth().signInWithCredential(appleCredential);
+  const appleCredential = AppleAuthProvider.credential(identityToken);
+  const { user } = await signInWithCredential(getAuth(), appleCredential);
 
   const displayName = fullName?.givenName
     ? [fullName.givenName, fullName.familyName].filter(Boolean).join(' ')
@@ -28,7 +33,8 @@ export async function signInWithApple(): Promise<void> {
 
   await upsertUser(user.uid, { displayName, avatarUrl: user.photoURL ?? null });
 
-  useAuthStore.getState().setUser({
+  const stored = await getUser(user.uid);
+  useAuthStore.getState().setUser(stored ?? {
     id: user.uid,
     displayName,
     avatarUrl: user.photoURL ?? null,
@@ -46,15 +52,16 @@ export async function signInWithGoogle(): Promise<void> {
   const idToken = result.data?.idToken;
   if (!idToken) throw new Error('No ID token returned from Google');
 
-  const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-  const { user } = await auth().signInWithCredential(googleCredential);
+  const googleCredential = GoogleAuthProvider.credential(idToken);
+  const { user } = await signInWithCredential(getAuth(), googleCredential);
 
   const displayName = user.displayName ?? result.data?.user?.name ?? 'Avail user';
   const avatarUrl = user.photoURL ?? result.data?.user?.photo ?? null;
 
   await upsertUser(user.uid, { displayName, avatarUrl });
 
-  useAuthStore.getState().setUser({
+  const stored = await getUser(user.uid);
+  useAuthStore.getState().setUser(stored ?? {
     id: user.uid,
     displayName,
     avatarUrl,

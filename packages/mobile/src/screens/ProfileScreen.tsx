@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Switch, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { AppNavProp } from '../navigation/types';
-import auth from '@react-native-firebase/auth';
+import { getAuth, signOut, deleteUser } from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useAuthStore } from '../store/authStore';
 import { useStatusStore } from '../store/statusStore';
@@ -20,7 +20,7 @@ const ProfileScreen: React.FC = () => {
     clearAuth();
     clearStatus();
     clearGroups();
-    auth().signOut().catch(() => {});
+    signOut(getAuth()).catch(() => {});
     GoogleSignin.signOut().catch(() => {});
   };
 
@@ -37,7 +37,8 @@ const ProfileScreen: React.FC = () => {
             clearAuth();
             clearStatus();
             clearGroups();
-            auth().currentUser?.delete().catch(() => {});
+            const currentUser = getAuth().currentUser;
+            if (currentUser) deleteUser(currentUser).catch(() => {});
           },
         },
       ]
@@ -48,6 +49,9 @@ const ProfileScreen: React.FC = () => {
     <ScrollView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        <TouchableOpacity style={styles.homeBtn} onPress={() => navigation.navigate('Home')}>
+          <Text style={styles.homeBtnText}>← Home</Text>
+        </TouchableOpacity>
         <View style={styles.avatar}>
           <Text style={styles.avatarInitial}>{user?.displayName?.[0]?.toUpperCase() ?? '?'}</Text>
         </View>
@@ -89,6 +93,8 @@ const ProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container:      { flex: 1, backgroundColor: colours.warmWhite },
   header:         { backgroundColor: colours.plum, paddingTop: 64, paddingBottom: 32, paddingHorizontal: 20, alignItems: 'center' },
+  homeBtn:        { alignSelf: 'flex-start', marginBottom: 20 },
+  homeBtnText:    { fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
   avatar:         { width: 72, height: 72, borderRadius: 36, backgroundColor: colours.orange, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
   avatarInitial:  { fontSize: 28, fontWeight: '700', color: colours.white },
   name:           { fontSize: 24, fontWeight: '700', color: colours.white, marginBottom: 6 },

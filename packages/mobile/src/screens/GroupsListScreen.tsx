@@ -3,11 +3,21 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-nati
 import { useNavigation } from '@react-navigation/native';
 import type { AppNavProp } from '../navigation/types';
 import { useGroupsStore } from '../store/groupsStore';
+import { useAliasStore } from '../store/aliasStore';
 import { colours } from '../constants/colours';
 
 const GroupsListScreen: React.FC = () => {
   const navigation   = useNavigation<AppNavProp<'GroupsList'>>();
   const { groups }   = useGroupsStore();
+  const { aliases }  = useAliasStore();
+
+  const groupPriority = (group: typeof groups[0]) => {
+    if (group.freeCount > 0)  return 0;
+    if (group.maybeCount > 0) return 1;
+    return 2;
+  };
+
+  const sortedGroups = groups.slice().sort((a, b) => groupPriority(a) - groupPriority(b));
 
   const getBadge = (group: typeof groups[0]) => {
     if (group.freeCount > 0) return { text: `${group.freeCount} free`, variant: 'free' as const };
@@ -45,14 +55,14 @@ const GroupsListScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        groups.map((group) => {
+        sortedGroups.map((group) => {
           const badge   = getBadge(group);
           const isQuiet = !badge;
           return (
             <TouchableOpacity
               key={group.id}
               style={[styles.row, isQuiet && styles.rowQuiet]}
-              onPress={() => navigation.navigate('GroupDetail', { groupId: group.id, groupName: group.name })}
+              onPress={() => navigation.navigate('GroupDetail', { groupId: group.id, groupName: aliases[group.id] ?? group.name })}
               activeOpacity={0.7}
             >
               {/* Group avatar */}
@@ -62,7 +72,7 @@ const GroupsListScreen: React.FC = () => {
 
               {/* Name + meta */}
               <View style={styles.rowBody}>
-                <Text style={styles.groupName}>{group.name}</Text>
+                <Text style={styles.groupName}>{aliases[group.id] ?? group.name}</Text>
                 <Text style={styles.meta}>{group.members.length} {group.members.length === 1 ? 'member' : 'members'}</Text>
               </View>
 

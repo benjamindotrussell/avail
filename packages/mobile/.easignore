@@ -1,0 +1,15 @@
+# Dependencies — EAS installs fresh on the build server
+node_modules/
+
+# Local Android build artifacts — EAS builds these on the server
+android/build/
+android/app/build/
+android/.gradle/
+
+# Local Expo dev cache
+.expo/
+
+# Test files
+**/__tests__/
+**/*.test.ts
+**/*.spec.ts

@@ -1,7 +1,7 @@
 // ─── Status types ─────────────────────────────────────────────────────────────
 
 export type Availability = 'free' | 'maybe' | 'busy';
-export type Location = 'my_place' | 'pub' | 'out' | 'someones_place' | 'other';
+export type Location = 'my_place' | 'pub' | 'out' | 'someones_place' | 'anywhere' | 'other';
 export type Vibe = 'im_paying' | 'buying_own' | 'suggest' | 'free_cheap' | 'other';
 
 export interface StatusPayload {
@@ -44,6 +44,7 @@ export interface GroupDTO {
   name: string;
   avatarUrl: string | null;
   createdAt: string;
+  createdBy: string;
 }
 
 export interface GroupMemberDTO {

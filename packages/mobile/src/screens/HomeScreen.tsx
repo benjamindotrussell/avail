@@ -5,6 +5,7 @@ import type { AppNavProp } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { useStatusStore } from '../store/statusStore';
 import { useGroupsStore } from '../store/groupsStore';
+import { useAliasStore } from '../store/aliasStore';
 import { setStatus, updateUser } from '../services/firestoreService';
 import { colours, dotColour, statusColour } from '../constants/colours';
 import { formatStatus, formatStatusDetail } from '../utils/statusHelpers';
@@ -14,6 +15,7 @@ const HomeScreen: React.FC = () => {
   const { user, setNotifyOnlyWhenActive } = useAuthStore();
   const { myStatuses, setMyStatus }       = useStatusStore();
   const { groups }                        = useGroupsStore();
+  const { aliases }                       = useAliasStore();
   const [settingBusy, setSettingBusy]     = useState(false);
 
   const availableMode = user?.notifyOnlyWhenActive ?? false;
@@ -101,7 +103,10 @@ const HomeScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        groups.map(group => {
+        groups.slice().sort((a, b) => {
+          const priority = (g: typeof a) => g.freeCount > 0 ? 0 : g.maybeCount > 0 ? 1 : 2;
+          return priority(a) - priority(b);
+        }).map(group => {
           const myGroupStatus = myStatuses[group.id] ??
             group.members.find(m => m.user.id === user?.id)?.status ?? null;
           const myAvail      = myGroupStatus?.availability ?? null;
@@ -118,9 +123,9 @@ const HomeScreen: React.FC = () => {
               <View style={[styles.cardBand, { backgroundColor: bandColour }]}>
                 <TouchableOpacity
                   style={styles.cardTitleRow}
-                  onPress={() => navigation.navigate('GroupDetail', { groupId: group.id, groupName: group.name })}
+                  onPress={() => navigation.navigate('GroupDetail', { groupId: group.id, groupName: aliases[group.id] ?? group.name })}
                 >
-                  <Text style={styles.cardTitle}>{group.name}</Text>
+                  <Text style={styles.cardTitle}>{aliases[group.id] ?? group.name}</Text>
                   {group.freeCount > 0 && (
                     <View style={styles.freeBadge}><Text style={styles.freeBadgeText}>{group.freeCount} free</Text></View>
                   )}
@@ -130,7 +135,7 @@ const HomeScreen: React.FC = () => {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.statusBtn, bandDark && styles.statusBtnOnDark]}
-                  onPress={() => navigation.navigate('StatusPicker', { groupId: group.id, groupName: group.name })}
+                  onPress={() => navigation.navigate('StatusPicker', { groupId: group.id, groupName: aliases[group.id] ?? group.name })}
                 >
                   <Text style={[styles.statusBtnText, bandDark && styles.statusBtnTextDark]}>
                     {myGroupStatus ? 'Update' : "I'm free"}

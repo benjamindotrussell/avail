@@ -4,12 +4,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { AppNavProp } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
+import { useGroupsStore } from '../store/groupsStore';
 import { createGroup } from '../services/firestoreService';
 import { colours } from '../constants/colours';
 
 const CreateGroupScreen: React.FC = () => {
   const navigation            = useNavigation<AppNavProp<'CreateGroup'>>();
   const { user }              = useAuthStore();
+  const { groups }            = useGroupsStore();
   const [name, setName]       = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
@@ -17,10 +19,19 @@ const CreateGroupScreen: React.FC = () => {
 
   const handleCreate = async () => {
     if (!name.trim() || !user) return;
+    const trimmed = name.trim();
+
+    const duplicate = groups.find(
+      g => g.name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (duplicate) {
+      setError(`You already have a group called "${duplicate.name}".`);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const trimmed = name.trim();
       const groupId = await createGroup(user.id, user.displayName, trimmed);
       navigation.replace('GroupDetail', { groupId, groupName: trimmed });
     } catch {

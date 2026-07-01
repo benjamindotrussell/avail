@@ -3,10 +3,11 @@ import { NavigationContainer, LinkingOptions, createNavigationContainerRef } fro
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Linking from 'expo-linking';
 import * as Clipboard from 'expo-clipboard';
-import auth from '@react-native-firebase/auth';
+import { getAuth, onAuthStateChanged } from '@react-native-firebase/auth';
 import { getUser, subscribeToGroups } from '../services/firestoreService';
 import { useAuthStore } from '../store/authStore';
 import { useGroupsStore } from '../store/groupsStore';
+import { useAliasStore } from '../store/aliasStore';
 import {
   registerForPushNotifications,
   addNotificationTapListener,
@@ -76,6 +77,7 @@ const AppNavigator: React.FC<{ pendingCode?: string | null }> = ({ pendingCode }
 const RootNavigator: React.FC = () => {
   const { isAuthenticated, setUser, clearAuth, user } = useAuthStore();
   const { setGroups, clearGroups } = useGroupsStore();
+  const { clearAliases } = useAliasStore();
   const [authReady, setAuthReady]   = useState(false);
   const [animDone, setAnimDone]     = useState(false);
   const [navReady, setNavReady]     = useState(false);
@@ -122,7 +124,7 @@ const RootNavigator: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(getAuth(), async (firebaseUser) => {
       if (firebaseUser) {
         try {
           const userDTO = await getUser(firebaseUser.uid);
@@ -158,6 +160,7 @@ const RootNavigator: React.FC = () => {
     return () => {
       unsubscribe();
       clearGroups();
+      clearAliases();
     };
   }, [isAuthenticated, user?.id]);
 

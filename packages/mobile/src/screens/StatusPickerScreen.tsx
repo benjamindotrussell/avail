@@ -44,6 +44,7 @@ const LOCATION_OPTS: Option[] = [
   { value: 'pub',            label: 'The pub',           sub: "Let's go out",                dotColour: colours.coral  },
   { value: 'out',            label: 'Out and about',     sub: "Let's see where we end up",   dotColour: colours.yellow },
   { value: 'someones_place', label: "Someone's place",  sub: 'Happy to come to your place', dotColour: colours.orange },
+  { value: 'anywhere',       label: 'Anywhere',          sub: "Wherever suits you",          dotColour: colours.stone  },
   { value: 'other',          label: 'Other…',            sub: 'Type your own location',      dotColour: colours.stone  },
 ];
 
@@ -155,12 +156,15 @@ const StatusPickerScreen: React.FC = () => {
   const handleBroadcast = async () => {
     setLoading(true);
     try {
+      const isFree = state.availability === 'free';
+      const location = state.location ?? (isFree ? 'anywhere' : null);
+      const vibe     = state.vibe     ?? (isFree ? 'suggest'  : null);
       const status = await setStatus(groupId, user!.id, {
         availability: state.availability!,
-        location: state.location,
-        locationNote: state.location === 'other' ? state.locationNote.trim() : null,
-        vibe: state.vibe,
-        vibeNote: state.vibe === 'other' ? state.vibeNote.trim() : null,
+        location,
+        locationNote: location === 'other' ? state.locationNote.trim() : null,
+        vibe,
+        vibeNote: vibe === 'other' ? state.vibeNote.trim() : null,
         expiryHours: state.expiryHours,
       });
       setMyStatus(groupId, status);

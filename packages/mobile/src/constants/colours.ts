@@ -15,7 +15,7 @@ export const colours = {
 
   // Utility
   white:     '#FFFFFF',
-  divider:   'rgba(0,0,0,0.08)',
+  divider:   'rgba(0,0,0,0.22)',
   cardBg:    '#FFFFFF',
 } as const;
 

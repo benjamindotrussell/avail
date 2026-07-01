@@ -4,6 +4,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { AppNavProp, AppRouteProp } from '../navigation/types';
 import { useGroupsStore } from '../store/groupsStore';
 import { useAuthStore } from '../store/authStore';
+import { useAliasStore } from '../store/aliasStore';
 import { deleteGroup, leaveGroup } from '../services/firestoreService';
 import { colours, statusColour } from '../constants/colours';
 import { formatStatus, formatStatusDetail } from '../utils/statusHelpers';
@@ -14,16 +15,20 @@ const GroupDetailScreen: React.FC = () => {
   const { groupId, groupName }  = route.params;
   const { groups }              = useGroupsStore();
   const { user }                = useAuthStore();
+  const { aliases }             = useAliasStore();
   const [deleting, setDeleting] = useState(false);
 
   const group = groups.find(g => g.id === groupId);
   const myMembership = group?.members.find(m => m.user.id === user?.id);
   const isAdmin = myMembership?.role === 'admin';
+  const displayName = aliases[groupId] ?? groupName;
+  const creator = group?.members.find(m => m.user.id === group.createdBy);
+  const creatorName = creator?.user.displayName ?? 'Unknown';
 
   const handleDelete = () => {
     Alert.alert(
       'Delete group',
-      `Are you sure you want to delete "${group?.name ?? groupName}"? This cannot be undone.`,
+      `Are you sure you want to delete "${displayName}"? This cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -47,7 +52,7 @@ const GroupDetailScreen: React.FC = () => {
   const handleLeave = () => {
     Alert.alert(
       'Leave group',
-      `Leave "${group?.name ?? groupName}"?`,
+      `Leave "${displayName}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -69,6 +74,8 @@ const GroupDetailScreen: React.FC = () => {
   };
 
   const sortedMembers = group?.members.slice().sort((a, b) => {
+    if (a.user.id === user?.id) return -1;
+    if (b.user.id === user?.id) return 1;
     const order: Record<string, number> = { free: 0, maybe: 1, busy: 2 };
     return (order[a.status?.availability ?? 'z'] ?? 3) - (order[b.status?.availability ?? 'z'] ?? 3);
   }) ?? [];
@@ -88,9 +95,9 @@ const GroupDetailScreen: React.FC = () => {
             <Text style={styles.back}>Home</Text>
           </TouchableOpacity>
         </View>
-        <Text style={styles.groupName}>{group?.name ?? groupName}</Text>
+        <Text style={styles.groupName}>{displayName}</Text>
         <Text style={styles.meta}>
-          {group?.members.length ?? 0} {(group?.members.length ?? 0) === 1 ? 'member' : 'members'}
+          {group?.members.length ?? 0} {(group?.members.length ?? 0) === 1 ? 'member' : 'members'} · Created by {creatorName}
         </Text>
         {(group?.freeCount ?? 0) > 0 && (
           <View style={styles.freePill}>
@@ -105,7 +112,7 @@ const GroupDetailScreen: React.FC = () => {
           const isGhost = !member.status || member.status.availability === 'busy';
           return (
             <View key={member.user.id} style={[styles.memberRow, isGhost && styles.memberRowGhost]}>
-              <View style={styles.avatar}>
+              <View style={[styles.avatar, member.user.id === user?.id && styles.avatarMe]}>
                 <Text style={styles.avatarInitial}>{member.user.displayName[0]?.toUpperCase() ?? '?'}</Text>
               </View>
               <View style={styles.memberBody}>
@@ -126,13 +133,13 @@ const GroupDetailScreen: React.FC = () => {
       <View style={styles.actions}>
         <TouchableOpacity
           style={styles.statusBtn}
-          onPress={() => navigation.navigate('StatusPicker', { groupId, groupName: group?.name ?? groupName })}
+          onPress={() => navigation.navigate('StatusPicker', { groupId, groupName: displayName })}
         >
           <Text style={styles.statusBtnText}>Set my status</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.inviteBtn}
-          onPress={() => navigation.navigate('Invite', { groupId, groupName: group?.name ?? groupName })}
+          onPress={() => navigation.navigate('Invite', { groupId, groupName: displayName })}
         >
           <Text style={styles.inviteBtnText}>Invite friends</Text>
         </TouchableOpacity>
@@ -172,10 +179,11 @@ const styles = StyleSheet.create({
   memberRow:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colours.divider, gap: 14 },
   memberRowGhost:  { opacity: 0.4 },
   avatar:          { width: 44, height: 44, borderRadius: 22, backgroundColor: colours.plum, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  avatarMe:        { backgroundColor: colours.orange },
   avatarInitial:   { fontSize: 17, fontWeight: '700', color: colours.white },
   memberBody:      { flex: 1 },
   memberName:      { fontSize: 17, fontWeight: '600', color: colours.darkText },
-  memberSub:       { fontSize: 13, color: colours.stone, marginTop: 3 },
+  memberSub:       { fontSize: 13, color: colours.darkText, marginTop: 3, opacity: 0.5 },
   memberStatus:    { fontSize: 13, fontWeight: '700', flexShrink: 0 },
 
   actions:         { margin: 20, marginTop: 28, gap: 12 },

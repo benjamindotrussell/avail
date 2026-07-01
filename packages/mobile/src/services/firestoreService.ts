@@ -1,12 +1,27 @@
-import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  writeBatch,
+  runTransaction,
+  Timestamp,
+} from '@react-native-firebase/firestore';
+import type { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import type {
   GroupWithMembersDTO, GroupMemberDTO, StatusDTO, UserDTO,
   Availability, Location, Vibe,
 } from '@avail/shared';
+import { useAliasStore } from '../store/aliasStore';
+
+const db = getFirestore();
 
 // ─── Firestore document shapes ────────────────────────────────────────────────
-
-type Timestamp = FirebaseFirestoreTypes.Timestamp;
 
 interface FSUser {
   displayName: string;
@@ -14,6 +29,7 @@ interface FSUser {
   notifyOnlyWhenActive: boolean;
   defaultExpiryHours?: number;
   memberGroupIds: string[];
+  groupAliases?: Record<string, string>;
   createdAt: Timestamp;
 }
 
@@ -97,6 +113,7 @@ function buildGroupDTO(
     name: groupMeta.name,
     avatarUrl: null,
     createdAt: tsToDate(groupMeta.createdAt).toISOString(),
+    createdBy: groupMeta.createdBy,
     members,
     freeCount: members.filter(m => m.status?.availability === 'free').length,
     maybeCount: members.filter(m => m.status?.availability === 'maybe').length,
@@ -106,7 +123,7 @@ function buildGroupDTO(
 // ─── User ─────────────────────────────────────────────────────────────────────
 
 export async function getUser(uid: string): Promise<UserDTO | null> {
-  const snap = await firestore().collection('users').doc(uid).get();
+  const snap = await getDoc(doc(db, 'users', uid));
   if (!snap.exists) return null;
   const d = snap.data() as FSUser | undefined;
   if (!d) return null;
@@ -125,7 +142,7 @@ export async function upsertUser(uid: string, data: {
   avatarUrl?: string | null;
   notifyOnlyWhenActive?: boolean;
 }): Promise<void> {
-  const ref = firestore().collection('users').doc(uid);
+  const ref = doc(db, 'users', uid);
 
   const fullDoc = {
     displayName: data.displayName ?? '',
@@ -136,18 +153,19 @@ export async function upsertUser(uid: string, data: {
     ...data,
   };
 
-  const snap = await ref.get();
+  const snap = await getDoc(ref);
   if (!snap.exists) {
-    await ref.set(fullDoc);
+    await setDoc(ref, fullDoc);
     return;
   }
 
   try {
-    await ref.update(data);
+    // Don't overwrite displayName — user may have customised it via EditProfile
+    const { displayName: _ignored, ...providerUpdate } = data;
+    await updateDoc(ref, providerUpdate);
   } catch (e: any) {
-    // Offline cache reported exists=true but server disagrees — create the doc.
     if (e?.code === 'firestore/not-found') {
-      await ref.set(fullDoc);
+      await setDoc(ref, fullDoc);
     } else {
       throw e;
     }
@@ -160,13 +178,11 @@ export async function updateUser(uid: string, data: {
   notifyOnlyWhenActive?: boolean;
   defaultExpiryHours?: number;
 }): Promise<void> {
-  // Write user doc first — must always succeed.
-  await firestore().collection('users').doc(uid).update(data);
+  await updateDoc(doc(db, 'users', uid), data);
 
-  // Propagate display name / avatar to group member docs (best-effort).
   if (data.displayName !== undefined || data.avatarUrl !== undefined) {
     try {
-      const userSnap = await firestore().collection('users').doc(uid).get();
+      const userSnap = await getDoc(doc(db, 'users', uid));
       const memberGroupIds: string[] = (userSnap.data() as FSUser)?.memberGroupIds ?? [];
       if (memberGroupIds.length === 0) return;
 
@@ -174,12 +190,9 @@ export async function updateUser(uid: string, data: {
       if (data.displayName !== undefined) memberUpdate.displayName = data.displayName;
       if (data.avatarUrl !== undefined) memberUpdate.avatarUrl = data.avatarUrl;
 
-      const batch = firestore().batch();
+      const batch = writeBatch(db);
       for (const groupId of memberGroupIds) {
-        batch.update(
-          firestore().collection('groups').doc(groupId).collection('members').doc(uid),
-          memberUpdate,
-        );
+        batch.update(doc(db, 'groups', groupId, 'members', uid), memberUpdate);
       }
       await batch.commit();
     } catch {
@@ -203,7 +216,10 @@ function subscribeToGroup(
     activeUnsubs.forEach(u => u());
     activeUnsubs = [];
     if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+    if (expiryTimer) { clearInterval(expiryTimer); expiryTimer = null; }
   };
+
+  let expiryTimer: ReturnType<typeof setInterval> | null = null;
 
   const setup = () => {
     if (stopped) return;
@@ -212,11 +228,11 @@ function subscribeToGroup(
     let groupMeta: FSGroup | null = null;
     const membersMap = new Map<string, FSMember>();
     const statusesMap = new Map<string, FSStatus>();
-    let membersReady = false; // don't emit until first members snapshot arrives
+    let membersReady = false;
 
     const merge = () => {
       if (!groupMeta || !membersReady) return;
-      retryDelay = 1500; // reset backoff on successful data delivery
+      retryDelay = 1500;
       onUpdate(buildGroupDTO(groupId, groupMeta, membersMap, statusesMap));
     };
 
@@ -224,17 +240,17 @@ function subscribeToGroup(
       if (stopped) return;
       teardown();
       retryTimer = setTimeout(setup, retryDelay);
-      retryDelay = Math.min(retryDelay * 2, 30_000); // cap at 30s
+      retryDelay = Math.min(retryDelay * 2, 30_000);
     };
 
     activeUnsubs.push(
-      firestore().collection('groups').doc(groupId).onSnapshot(snap => {
+      onSnapshot(doc(db, 'groups', groupId), snap => {
         if (!snap.exists) { onUpdate(null); return; }
         groupMeta = snap.data() as FSGroup;
         merge();
       }, onError),
 
-      firestore().collection('groups').doc(groupId).collection('members').onSnapshot(snap => {
+      onSnapshot(collection(db, 'groups', groupId, 'members'), snap => {
         snap.docChanges().forEach(change => {
           if (change.type === 'removed') membersMap.delete(change.doc.id);
           else membersMap.set(change.doc.id, change.doc.data() as FSMember);
@@ -243,7 +259,7 @@ function subscribeToGroup(
         merge();
       }, onError),
 
-      firestore().collection('groups').doc(groupId).collection('statuses').onSnapshot(snap => {
+      onSnapshot(collection(db, 'groups', groupId, 'statuses'), snap => {
         snap.docChanges().forEach(change => {
           if (change.type === 'removed') statusesMap.delete(change.doc.id);
           else statusesMap.set(change.doc.id, change.doc.data() as FSStatus);
@@ -251,6 +267,8 @@ function subscribeToGroup(
         merge();
       }, onError),
     );
+
+    expiryTimer = setInterval(merge, 60_000);
   };
 
   setup();
@@ -271,9 +289,11 @@ export function subscribeToGroups(
     onUpdate(sorted);
   };
 
-  const unsubUser = firestore().collection('users').doc(uid).onSnapshot(snap => {
+  const unsubUser = onSnapshot(doc(db, 'users', uid), snap => {
     if (!snap.exists) return;
-    const memberGroupIds: string[] = (snap.data() as FSUser).memberGroupIds ?? [];
+    const fsUser = snap.data() as FSUser;
+    const memberGroupIds: string[] = fsUser.memberGroupIds ?? [];
+    useAliasStore.getState().setAliases(fsUser.groupAliases ?? {});
 
     for (const gid of [...groupListeners.keys()]) {
       if (!memberGroupIds.includes(gid)) {
@@ -306,31 +326,31 @@ export function subscribeToGroups(
 // ─── memberGroupIds helpers ───────────────────────────────────────────────────
 
 async function addToUserGroups(uid: string, groupId: string): Promise<void> {
-  const ref = firestore().collection('users').doc(uid);
-  const snap = await ref.get();
+  const ref = doc(db, 'users', uid);
+  const snap = await getDoc(ref);
   const ids: string[] = (snap.data() as FSUser)?.memberGroupIds ?? [];
   if (!ids.includes(groupId)) {
-    await ref.update({ memberGroupIds: [...ids, groupId] });
+    await updateDoc(ref, { memberGroupIds: [...ids, groupId] });
   }
 }
 
 async function removeFromUserGroups(uid: string, groupId: string): Promise<void> {
-  const ref = firestore().collection('users').doc(uid);
-  const snap = await ref.get();
+  const ref = doc(db, 'users', uid);
+  const snap = await getDoc(ref);
   const ids: string[] = (snap.data() as FSUser)?.memberGroupIds ?? [];
-  await ref.update({ memberGroupIds: ids.filter(id => id !== groupId) });
+  await updateDoc(ref, { memberGroupIds: ids.filter(id => id !== groupId) });
 }
 
 // ─── Groups — writes ──────────────────────────────────────────────────────────
 
 export async function createGroup(uid: string, displayName: string, name: string): Promise<string> {
-  const batch = firestore().batch();
+  const batch = writeBatch(db);
 
-  const groupRef = firestore().collection('groups').doc();
+  const groupRef = doc(collection(db, 'groups'));
   batch.set(groupRef, { name, createdBy: uid, createdAt: new Date() });
-
-  const memberRef = firestore().collection('groups').doc(groupRef.id).collection('members').doc(uid);
-  batch.set(memberRef, { uid, role: 'admin', displayName, avatarUrl: null, joinedAt: new Date() });
+  batch.set(doc(db, 'groups', groupRef.id, 'members', uid), {
+    uid, role: 'admin', displayName, avatarUrl: null, joinedAt: new Date(),
+  });
 
   await batch.commit();
   await addToUserGroups(uid, groupRef.id);
@@ -338,29 +358,29 @@ export async function createGroup(uid: string, displayName: string, name: string
 }
 
 export async function deleteGroup(groupId: string, uid: string): Promise<void> {
-  const memberSnap = await firestore().collection('groups').doc(groupId).collection('members').doc(uid).get();
+  const memberSnap = await getDoc(doc(db, 'groups', groupId, 'members', uid));
   if (!memberSnap.exists || memberSnap.data()?.role !== 'admin') {
     throw new Error('Only admins can delete a group');
   }
 
-  const membersSnap = await firestore().collection('groups').doc(groupId).collection('members').get();
-  const batch = firestore().batch();
+  const [mSnap, sSnap] = await Promise.all([
+    getDocs(collection(db, 'groups', groupId, 'members')),
+    getDocs(collection(db, 'groups', groupId, 'statuses')),
+  ]);
 
-  membersSnap.docs.forEach(m => batch.delete(m.ref));
-
-  const statusesSnap = await firestore().collection('groups').doc(groupId).collection('statuses').get();
-  statusesSnap.docs.forEach(s => batch.delete(s.ref));
-
-  batch.delete(firestore().collection('groups').doc(groupId));
+  const batch = writeBatch(db);
+  mSnap.docs.forEach(m => batch.delete(m.ref));
+  sSnap.docs.forEach(s => batch.delete(s.ref));
+  batch.delete(doc(db, 'groups', groupId));
   await batch.commit();
 
-  await Promise.all(membersSnap.docs.map(m => removeFromUserGroups(m.id, groupId)));
+  await Promise.all(mSnap.docs.map(m => removeFromUserGroups(m.id, groupId)));
 }
 
 export async function leaveGroup(groupId: string, uid: string): Promise<void> {
-  const batch = firestore().batch();
-  batch.delete(firestore().collection('groups').doc(groupId).collection('members').doc(uid));
-  batch.delete(firestore().collection('groups').doc(groupId).collection('statuses').doc(uid));
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'groups', groupId, 'members', uid));
+  batch.delete(doc(db, 'groups', groupId, 'statuses', uid));
   await batch.commit();
   await removeFromUserGroups(uid, groupId);
 }
@@ -389,11 +409,11 @@ export async function setStatus(
     locationNote: payload.locationNote ?? null,
     vibe: payload.vibe ?? null,
     vibeNote: payload.vibeNote ?? null,
-    expiresAt: firestore.Timestamp.fromDate(expiresAt),
-    updatedAt: firestore.Timestamp.fromDate(new Date()),
+    expiresAt: Timestamp.fromDate(expiresAt),
+    updatedAt: Timestamp.fromDate(new Date()),
   };
 
-  await firestore().collection('groups').doc(groupId).collection('statuses').doc(uid).set(statusData);
+  await setDoc(doc(db, 'groups', groupId, 'statuses', uid), statusData);
   return fsStatusToDTO(uid, groupId, statusData)!;
 }
 
@@ -405,21 +425,26 @@ function generateCode(): string {
 }
 
 export async function createInviteCode(groupId: string, uid: string): Promise<string> {
-  const memberSnap = await firestore().collection('groups').doc(groupId).collection('members').doc(uid).get();
+  const memberSnap = await getDoc(doc(db, 'groups', groupId, 'members', uid));
   if (!memberSnap.exists) throw new Error('Not a member of this group');
 
   const code = generateCode();
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7);
 
-  await firestore().collection('inviteCodes').doc(code).set({
+  await setDoc(doc(db, 'inviteCodes', code), {
     groupId,
     createdBy: uid,
-    expiresAt: firestore.Timestamp.fromDate(expiresAt),
+    expiresAt: Timestamp.fromDate(expiresAt),
     createdAt: new Date(),
   });
 
   return `https://avail-app-b71d4.web.app/join/${code}`;
+}
+
+export async function saveGroupAlias(uid: string, groupId: string, alias: string): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { [`groupAliases.${groupId}`]: alias.trim() });
+  useAliasStore.getState().setAlias(groupId, alias.trim());
 }
 
 export async function joinGroupByCode(
@@ -427,8 +452,8 @@ export async function joinGroupByCode(
   uid: string,
   displayName: string,
   avatarUrl: string | null,
-): Promise<{ groupId: string; alreadyMember: boolean }> {
-  const inviteSnap = await firestore().collection('inviteCodes').doc(code).get();
+): Promise<{ groupId: string; alreadyMember: boolean; groupName: string }> {
+  const inviteSnap = await getDoc(doc(db, 'inviteCodes', code));
   if (!inviteSnap.exists) throw new Error('Invalid invite link');
 
   const invite = inviteSnap.data() as FSInviteCode;
@@ -436,37 +461,38 @@ export async function joinGroupByCode(
 
   const groupId = invite.groupId;
 
-  // Transaction forces a server-side read (never local cache) so we get the
-  // accurate membership state, and the write is committed atomically.
   let alreadyMember = false;
-  await firestore().runTransaction(async (tx) => {
-    const memberRef = firestore()
-      .collection('groups').doc(groupId)
-      .collection('members').doc(uid);
+  await runTransaction(db, async (tx) => {
+    const memberRef = doc(db, 'groups', groupId, 'members', uid);
     const snap = await tx.get(memberRef);
-    // snap.exists is a native method in RN Firebase transactions — use data() instead
     alreadyMember = snap.data() !== undefined;
-    console.log(`[join] groupId=${groupId} uid=${uid} alreadyMember=${alreadyMember}`);
     if (!alreadyMember) {
       tx.set(memberRef, { uid, role: 'member', displayName, avatarUrl, joinedAt: new Date() });
     }
   });
-  console.log(`[join] transaction done — alreadyMember=${alreadyMember}`);
 
-  // Always ensure memberGroupIds is up to date (handles partial failure recovery)
   await addToUserGroups(uid, groupId);
 
-  return { groupId, alreadyMember };
+  // Read group name now — after joining, isMember() is true so the read is allowed.
+  let groupName = '';
+  try {
+    const groupSnap = await getDoc(doc(db, 'groups', groupId));
+    groupName = (groupSnap.data() as FSGroup)?.name ?? '';
+  } catch {
+    // Falls back to empty string; GroupDetail will show the name once the subscription fires.
+  }
+
+  return { groupId, alreadyMember, groupName };
 }
 
 // ─── Device tokens ────────────────────────────────────────────────────────────
 
 export async function registerDeviceToken(uid: string, token: string, platform: 'ios' | 'android'): Promise<void> {
-  await firestore().collection('users').doc(uid).collection('deviceTokens').doc(token).set({
+  await setDoc(doc(db, 'users', uid, 'deviceTokens', token), {
     token, platform, createdAt: new Date(),
   });
 }
 
 export async function removeDeviceToken(uid: string, token: string): Promise<void> {
-  await firestore().collection('users').doc(uid).collection('deviceTokens').doc(token).delete();
+  await deleteDoc(doc(db, 'users', uid, 'deviceTokens', token));
 }

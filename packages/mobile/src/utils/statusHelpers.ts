@@ -19,6 +19,7 @@ export const formatLocation = (location: string, note?: string | null): string =
     pub:            'The pub',
     out:            'Out and about',
     someones_place: "Someone's place",
+    anywhere:       'Anywhere',
   };
   return map[location] ?? location;
 };
