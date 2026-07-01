@@ -7,7 +7,10 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "node": "20.19.4"
+      "node": "20.19.4",
+      "env": {
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "1"
+      }
     },
     "simulator": {
       "developmentClient": true,
@@ -15,15 +18,24 @@
       "node": "20.19.4",
       "ios": {
         "simulator": true
+      },
+      "env": {
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "1"
       }
     },
     "preview": {
       "distribution": "internal",
-      "node": "20.19.4"
+      "node": "20.19.4",
+      "env": {
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "1"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "node": "20.19.4"
+      "node": "20.19.4",
+      "env": {
+        "EXPO_USE_COMMUNITY_AUTOLINKING": "1"
+      }
     }
   },
   "submit": {
