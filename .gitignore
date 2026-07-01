@@ -12,3 +12,12 @@ coverage/
 
 # GoogleService-Info.plist contains sensitive iOS keys — manage via EAS secrets for iOS builds
 packages/mobile/GoogleService-Info.plist
+
+# Android build artifacts — EAS build server generates these fresh on Linux.
+# The autolinking.json cache in android/build/ contains Windows absolute paths when generated locally,
+# which breaks EAS Linux builds if uploaded. These are excluded from git via android/.gitignore,
+# but this root-level rule ensures EAS respects the exclusion.
+packages/mobile/android/build/
+packages/mobile/android/app/build/
+packages/mobile/android/.gradle/
+packages/mobile/.expo/
