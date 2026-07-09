@@ -17,7 +17,8 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Avail uses your photo library to set a profile picture.",
         "NSCameraUsageDescription": "Avail uses your camera to take a profile picture.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDisplayName": "Avail"
       },
       "googleServicesFile": "./GoogleService-Info.plist"
     },
