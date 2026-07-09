@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { registerDeviceToken, removeDeviceToken } from './firestoreService';
 
 // ─── Notification handler — show alerts when app is foregrounded ──────────────
@@ -46,7 +47,8 @@ export const registerForPushNotifications = async (uid: string): Promise<string 
     return null;
   }
 
-  const { data: token } = await Notifications.getExpoPushTokenAsync();
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? '939072ef-de06-46eb-875b-f4da55a6c8a4';
+  const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
 
   try {
     await registerDeviceToken(uid, token, Platform.OS === 'ios' ? 'ios' : 'android');
